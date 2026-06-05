@@ -11,6 +11,9 @@ from spiderpilot.antibot.precheck import run_antibot_precheck
 from spiderpilot.generator.codegen import generate_spider
 from spiderpilot.planner.extraction_plan import build_extraction_plan
 from spiderpilot.probe.http_probe import run_http_probe
+from spiderpilot.probe.cloak_probe import run_cloak_probe
+from spiderpilot.probe.diff import build_probe_diff
+from spiderpilot.antibot.strategy import build_antibot_strategy
 from spiderpilot.repair.auto_repair import build_repair_report
 from spiderpilot.reverse.locator import run_reverse
 from spiderpilot.runner.local_runner import run_plan
@@ -26,7 +29,7 @@ def create_task(spec_path: Path, workspace: Path = Path("workspace")) -> dict[st
     return {"spec": spec, "workspace": task_workspace, "summary": summary}
 
 
-def run_all(spec_path: Path, workspace: Path = Path("workspace"), timeout: int = 20, skip_network: bool = False) -> dict[str, Any]:
+def run_all(spec_path: Path, workspace: Path = Path("workspace"), timeout: int = 20, skip_network: bool = False, with_cloak: bool = False, cloak_wait: float = 5.0) -> dict[str, Any]:
     """Run the full MVP workflow.
 
     If skip_network is True, existing raw.html artifacts are reused and antibot/probe
@@ -45,9 +48,17 @@ def run_all(spec_path: Path, workspace: Path = Path("workspace"), timeout: int =
     if not skip_network:
         report["steps"]["antibot"] = run_antibot_precheck(copied_spec_path, workspace=workspace, timeout=timeout)
         report["steps"]["probe"] = run_http_probe(copied_spec_path, workspace=workspace, timeout=timeout)
+        if with_cloak:
+            report["steps"]["cloak_probe"] = run_cloak_probe(copied_spec_path, workspace=workspace, capture=True, wait_seconds=cloak_wait)
+            report["steps"]["probe_diff"] = build_probe_diff(copied_spec_path, workspace=workspace)
+            report["steps"]["antibot_strategy"] = build_antibot_strategy(copied_spec_path, workspace=workspace)
     else:
         report["steps"]["antibot"] = {"skipped": True}
         report["steps"]["probe"] = {"skipped": True}
+        if with_cloak:
+            report["steps"]["cloak_probe"] = {"skipped": True, "reason": "skip_network enabled"}
+            report["steps"]["probe_diff"] = build_probe_diff(copied_spec_path, workspace=workspace)
+            report["steps"]["antibot_strategy"] = build_antibot_strategy(copied_spec_path, workspace=workspace)
 
     report["steps"]["reverse"] = run_reverse(copied_spec_path, workspace=workspace)
     plan = build_extraction_plan(copied_spec_path, workspace=workspace)
