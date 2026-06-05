@@ -38,6 +38,7 @@ def build_extraction_plan(spec_path: Path, workspace: Path = Path("workspace")) 
                     "sample_id": best.get("sample_id"),
                     "matched_value": best.get("matched_value"),
                     "context": best.get("context"),
+                    "samples": _sample_evidence(field_candidates.get("candidates") or []),
                 },
             }
         else:
@@ -76,6 +77,27 @@ def build_extraction_plan(spec_path: Path, workspace: Path = Path("workspace")) 
     plan_path.parent.mkdir(parents=True, exist_ok=True)
     plan_path.write_text(yaml.safe_dump(plan, allow_unicode=True, sort_keys=False), encoding="utf-8")
     return plan
+
+
+def _sample_evidence(candidates: list[dict[str, Any]]) -> dict[str, Any]:
+    evidence: dict[str, Any] = {}
+    by_sample: dict[str, list[dict[str, Any]]] = {}
+    for candidate in candidates:
+        sample_id = candidate.get("sample_id")
+        if not sample_id:
+            continue
+        by_sample.setdefault(sample_id, []).append(candidate)
+    for sample_id, sample_candidates in by_sample.items():
+        best = _select_best_candidate(sample_candidates)
+        if best:
+            evidence[sample_id] = {
+                "path": best.get("path"),
+                "matched_value": best.get("matched_value"),
+                "match_type": best.get("match_type"),
+                "confidence": best.get("confidence", 0),
+                "context": best.get("context"),
+            }
+    return evidence
 
 
 def _select_best_candidate(candidates: list[dict[str, Any]]) -> dict[str, Any] | None:

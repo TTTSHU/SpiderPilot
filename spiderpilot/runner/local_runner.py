@@ -26,7 +26,7 @@ def run_plan(spec_path: Path, plan_path: Path, workspace: Path = Path("workspace
         text = raw_path.read_text(encoding="utf-8", errors="replace") if raw_path.exists() else ""
         item = {"_sample_id": sample.id, "_url": sample.url}
         for field_name, field_plan in (plan.get("fields") or {}).items():
-            item[field_name] = _extract_mvp_value(text, field_plan)
+            item[field_name] = _extract_mvp_value(text, field_plan, sample_id=sample.id)
         results.append(item)
 
     result_path = workspace / "results" / f"{spec.name}.json"
@@ -35,8 +35,13 @@ def run_plan(spec_path: Path, plan_path: Path, workspace: Path = Path("workspace
     return {"task": spec.name, "result_path": str(result_path), "items_total": len(results), "items": results}
 
 
-def _extract_mvp_value(text: str, field_plan: dict[str, Any]) -> Any:
+def _extract_mvp_value(text: str, field_plan: dict[str, Any], sample_id: str | None = None) -> Any:
     evidence = field_plan.get("evidence") or {}
+    if sample_id:
+        sample_evidence = (evidence.get("samples") or {}).get(sample_id) or {}
+        matched = sample_evidence.get("matched_value")
+        if matched is not None and str(matched) in text:
+            return matched
     matched = evidence.get("matched_value")
     if matched is not None and str(matched) in text:
         return matched

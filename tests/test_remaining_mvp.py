@@ -11,6 +11,7 @@ def test_class_name():
 
 def test_extract_mvp_value():
     assert _extract_mvp_value("hello price 123", {"evidence": {"matched_value": "123"}}) == "123"
+    assert _extract_mvp_value("hello sample2", {"evidence": {"matched_value": "sample1", "samples": {"s2": {"matched_value": "sample2"}}}}, sample_id="s2") == "sample2"
     assert _extract_mvp_value("hello", {"evidence": {"matched_value": "123"}}) is None
 
 
