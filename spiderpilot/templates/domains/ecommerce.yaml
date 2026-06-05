@@ -1,0 +1,74 @@
+version: 1
+name: ecommerce
+description: 电商/跨境电商采集模板。该模板只是行业默认规划，不属于 SpiderPilot Core 固定概念。
+
+entities:
+  product:
+    description: 商品
+  shop:
+    description: 店铺
+  category:
+    description: 类目
+  review:
+    description: 评论
+
+spiders:
+  product_detail:
+    role: detail_collector
+    page_type: detail
+    entity: product
+    description: 采集商品详情完整信息
+
+  category_listing:
+    role: list_discoverer
+    page_type: list
+    input_entity: category
+    output_entity: product
+    description: 从类目页发现商品
+    pushes_to:
+      - product_detail
+
+  shop_listing:
+    role: list_discoverer
+    page_type: list
+    input_entity: shop
+    output_entity: product
+    description: 从店铺商品列表发现商品
+    pushes_to:
+      - product_detail
+
+  review_increment:
+    role: incremental_discoverer
+    page_type: list
+    input_entity: product
+    output_entity: review
+    description: 增量采集商品评论
+
+crawl_graph:
+  nodes:
+    - id: category_listing
+      role: list_discoverer
+      input_entity: category
+      output_entity: product
+    - id: shop_listing
+      role: list_discoverer
+      input_entity: shop
+      output_entity: product
+    - id: product_detail
+      role: detail_collector
+      input_entity: product
+      output_entity: product
+    - id: review_increment
+      role: incremental_discoverer
+      input_entity: product
+      output_entity: review
+  edges:
+    - from: category_listing
+      to: product_detail
+      via: discovered_url
+    - from: shop_listing
+      to: product_detail
+      via: discovered_url
+    - from: product_detail
+      to: review_increment
+      via: entity_id

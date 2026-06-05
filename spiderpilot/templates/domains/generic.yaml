@@ -1,0 +1,27 @@
+version: 1
+name: generic
+description: 通用采集模板，不绑定具体行业。
+
+page_types:
+  - detail
+  - list
+  - search
+  - profile
+  - feed
+  - api
+  - sitemap
+
+spider_roles:
+  - detail_collector
+  - list_discoverer
+  - search_discoverer
+  - profile_collector
+  - feed_collector
+  - relationship_discoverer
+  - incremental_discoverer
+
+entities: {}
+
+crawl_graph:
+  nodes: []
+  edges: []

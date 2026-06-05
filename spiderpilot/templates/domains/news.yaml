@@ -1,0 +1,60 @@
+version: 1
+name: news
+description: 新闻/内容站采集模板。
+
+entities:
+  article:
+    description: 文章
+  author:
+    description: 作者
+  channel:
+    description: 频道
+  tag:
+    description: 标签
+
+spiders:
+  article_detail:
+    role: detail_collector
+    page_type: detail
+    entity: article
+    description: 采集文章详情
+
+  channel_listing:
+    role: list_discoverer
+    page_type: list
+    input_entity: channel
+    output_entity: article
+    description: 从频道页发现文章
+    pushes_to:
+      - article_detail
+
+  author_articles:
+    role: list_discoverer
+    page_type: profile
+    input_entity: author
+    output_entity: article
+    description: 从作者页发现文章
+    pushes_to:
+      - article_detail
+
+crawl_graph:
+  nodes:
+    - id: channel_listing
+      role: list_discoverer
+      input_entity: channel
+      output_entity: article
+    - id: author_articles
+      role: list_discoverer
+      input_entity: author
+      output_entity: article
+    - id: article_detail
+      role: detail_collector
+      input_entity: article
+      output_entity: article
+  edges:
+    - from: channel_listing
+      to: article_detail
+      via: discovered_url
+    - from: author_articles
+      to: article_detail
+      via: discovered_url

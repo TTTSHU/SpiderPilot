@@ -25,6 +25,31 @@ SpiderPilot 希望把这个流程变成：
 From examples to spiders.
 ```
 
+## 通用架构设计
+
+SpiderPilot 不绑定某个行业。跨境电商中的商品详情、店铺增量、类目增量只是 `ecommerce` 行业模板。
+
+核心抽象包括：
+
+- `Entity Model`：业务实体，例如 product、article、job、house、post
+- `Page Type`：页面类型，例如 detail、list、search、profile、feed、api
+- `Spider Role`：爬虫职责，例如 detail_collector、list_discoverer、search_discoverer
+- `Crawl Graph`：多个 Spider 之间的任务流转关系
+- `Task Message`：Spider 之间传递的通用任务消息
+
+行业能力通过模板扩展：
+
+```text
+generic
+ecommerce
+news
+jobs
+real_estate
+social_media
+```
+
+详细设计见：[`docs/generic_architecture.md`](docs/generic_architecture.md)
+
 ## 主要功能
 
 ### 1. 多 URL 样例输入
@@ -159,6 +184,20 @@ SpiderPilot/
 │   ├── workflow.py               # 主工作流编排
 │   ├── models.py                 # Pydantic 数据模型
 │   ├── llm.py                    # LLM 调用封装
+│   │
+│   ├── core/                     # 通用核心抽象
+│   │   ├── __init__.py
+│   │   └── models.py             # Entity / PageType / CrawlGraph / TaskMessage
+│   │
+│   ├── platform/                 # 平台画像与 Spider 矩阵规划
+│   │   └── __init__.py
+│   │
+│   ├── templates/                # 行业模板
+│   │   ├── __init__.py
+│   │   └── domains/
+│   │       ├── generic.yaml
+│   │       ├── ecommerce.yaml
+│   │       └── news.yaml
 │   │
 │   ├── antibot/                  # 反爬预检模块
 │   │   └── __init__.py
