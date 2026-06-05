@@ -9,6 +9,7 @@ from typing import Any
 import yaml
 
 from spiderpilot.spec import CrawlSpec, ExpectedValue, load_spec
+from spiderpilot.reverse.json_locator import extract_embedded_json, find_json_paths
 
 
 @dataclass
@@ -47,6 +48,7 @@ def run_reverse(spec_path: Path, workspace: Path = Path("workspace")) -> dict[st
         text = raw_path.read_text(encoding="utf-8", errors="replace")
         for field_name, expected in sample.expected.items():
             all_candidates.extend(locate_expected_in_text(field_name, expected, sample.id, text))
+            all_candidates.extend(locate_expected_in_embedded_json(field_name, expected, sample.id, text))
 
     grouped = group_candidates(spec, all_candidates)
     report = {
@@ -72,6 +74,35 @@ def locate_expected_in_text(field_name: str, expected: ExpectedValue, sample_id:
         candidates.extend(_find_value(field_name, sample_id, text, str(value), "contains", 0.65))
     for value in expected.contains_any or []:
         candidates.extend(_find_value(field_name, sample_id, text, str(value), "contains_any", 0.55))
+    return candidates
+
+
+def locate_expected_in_embedded_json(field_name: str, expected: ExpectedValue, sample_id: str, html: str) -> list[FieldCandidate]:
+    candidates: list[FieldCandidate] = []
+    docs = extract_embedded_json(html)
+    expected_values: list[tuple[str, str, float]] = []
+    if expected.equals is not None:
+        expected_values.append((str(expected.equals), "equals", 0.9))
+    for value in expected.contains or []:
+        expected_values.append((str(value), "contains", 0.8))
+    for value in expected.contains_any or []:
+        expected_values.append((str(value), "contains_any", 0.7))
+
+    for doc_index, doc in enumerate(docs):
+        for value, match_type, confidence in expected_values:
+            for hit in find_json_paths(doc.data, value):
+                candidates.append(
+                    FieldCandidate(
+                        field=field_name,
+                        source=doc.source,
+                        path=f"json_doc:{doc_index}:{hit['path']}",
+                        sample_id=sample_id,
+                        match_type=match_type,
+                        matched_value=hit["value"],
+                        context=f"{doc.source} {hit['path']}",
+                        confidence=confidence,
+                    )
+                )
     return candidates
 
 
