@@ -124,3 +124,10 @@ def _parse_json(raw: str) -> Any | None:
 
 def _html_unescape(text: str) -> str:
     return text.replace("&quot;", '"').replace("&amp;", "&").replace("&lt;", "<").replace("&gt;", ">")
+
+
+def load_json_file(path: str | __import__('pathlib').Path) -> Any | None:
+    try:
+        return json.loads(__import__('pathlib').Path(path).read_text(encoding="utf-8"))
+    except Exception:
+        return None

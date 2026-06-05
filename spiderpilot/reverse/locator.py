@@ -9,7 +9,7 @@ from typing import Any
 import yaml
 
 from spiderpilot.spec import CrawlSpec, ExpectedValue, load_spec
-from spiderpilot.reverse.json_locator import extract_embedded_json, find_json_paths
+from spiderpilot.reverse.json_locator import extract_embedded_json, find_json_paths, load_json_file
 
 
 @dataclass
@@ -49,6 +49,7 @@ def run_reverse(spec_path: Path, workspace: Path = Path("workspace")) -> dict[st
         for field_name, expected in sample.expected.items():
             all_candidates.extend(locate_expected_in_text(field_name, expected, sample.id, text))
             all_candidates.extend(locate_expected_in_embedded_json(field_name, expected, sample.id, text))
+            all_candidates.extend(locate_expected_in_json_responses(field_name, expected, sample.id, raw_path.parent))
 
     grouped = group_candidates(spec, all_candidates)
     report = {
@@ -100,6 +101,40 @@ def locate_expected_in_embedded_json(field_name: str, expected: ExpectedValue, s
                         match_type=match_type,
                         matched_value=hit["value"],
                         context=f"{doc.source} {hit['path']}",
+                        confidence=confidence,
+                    )
+                )
+    return candidates
+
+
+def locate_expected_in_json_responses(field_name: str, expected: ExpectedValue, sample_id: str, sample_dir: Path) -> list[FieldCandidate]:
+    candidates: list[FieldCandidate] = []
+    response_dir = sample_dir / "responses"
+    if not response_dir.exists():
+        return candidates
+    expected_values: list[tuple[str, str, float]] = []
+    if expected.equals is not None:
+        expected_values.append((str(expected.equals), "equals", 0.95))
+    for value in expected.contains or []:
+        expected_values.append((str(value), "contains", 0.85))
+    for value in expected.contains_any or []:
+        expected_values.append((str(value), "contains_any", 0.75))
+
+    for json_file in sorted(response_dir.glob("*.json")):
+        data = load_json_file(json_file)
+        if data is None:
+            continue
+        for value, match_type, confidence in expected_values:
+            for hit in find_json_paths(data, value):
+                candidates.append(
+                    FieldCandidate(
+                        field=field_name,
+                        source="json_response",
+                        path=f"json_response:{json_file.name}:{hit['path']}",
+                        sample_id=sample_id,
+                        match_type=match_type,
+                        matched_value=hit["value"],
+                        context=f"{json_file.name} {hit['path']}",
                         confidence=confidence,
                     )
                 )

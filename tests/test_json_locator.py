@@ -18,3 +18,14 @@ def test_locate_expected_in_embedded_json():
     assert candidates
     assert candidates[0].source == "embedded_json"
     assert "$.props.title" in candidates[0].path
+
+
+def test_locate_expected_in_json_responses(tmp_path):
+    from spiderpilot.reverse.locator import locate_expected_in_json_responses
+    responses = tmp_path / "responses"
+    responses.mkdir()
+    (responses / "api.json").write_text("{\"data\":{\"price\":\"123\"}}", encoding="utf-8")
+    candidates = locate_expected_in_json_responses("price", ExpectedValue(equals="123"), "s1", tmp_path)
+    assert candidates
+    assert candidates[0].source == "json_response"
+    assert candidates[0].path == "json_response:api.json:$.data.price"

@@ -27,3 +27,10 @@ def test_suggest_action():
 def test_extract_json_doc_path_value():
     html = '<script type="application/ld+json">{"name":"Example Product"}</script>'
     assert _extract_mvp_value(html, {"evidence": {"path": "json_doc:0:$.name"}}) == "Example Product"
+
+
+def test_extract_json_response_path_value(tmp_path):
+    responses = tmp_path / "responses"
+    responses.mkdir()
+    (responses / "api.json").write_text("{\"data\":{\"price\":\"123\"}}", encoding="utf-8")
+    assert _extract_mvp_value("", {"evidence": {"path": "json_response:api.json:$.data.price"}}, sample_dir=tmp_path) == "123"

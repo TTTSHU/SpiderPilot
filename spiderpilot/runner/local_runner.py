@@ -12,7 +12,7 @@ from typing import Any
 
 import yaml
 
-from spiderpilot.reverse.json_locator import extract_embedded_json, get_json_path
+from spiderpilot.reverse.json_locator import extract_embedded_json, get_json_path, load_json_file
 from spiderpilot.spec import load_spec
 
 
@@ -27,7 +27,7 @@ def run_plan(spec_path: Path, plan_path: Path, workspace: Path = Path("workspace
         text = raw_path.read_text(encoding="utf-8", errors="replace") if raw_path.exists() else ""
         item = {"_sample_id": sample.id, "_url": sample.url}
         for field_name, field_plan in (plan.get("fields") or {}).items():
-            item[field_name] = _extract_mvp_value(text, field_plan, sample_id=sample.id)
+            item[field_name] = _extract_mvp_value(text, field_plan, sample_id=sample.id, sample_dir=raw_path.parent)
         results.append(item)
 
     result_path = workspace / "results" / f"{spec.name}.json"
@@ -36,26 +36,43 @@ def run_plan(spec_path: Path, plan_path: Path, workspace: Path = Path("workspace
     return {"task": spec.name, "result_path": str(result_path), "items_total": len(results), "items": results}
 
 
-def _extract_mvp_value(text: str, field_plan: dict[str, Any], sample_id: str | None = None) -> Any:
+def _extract_mvp_value(text: str, field_plan: dict[str, Any], sample_id: str | None = None, sample_dir: Path | None = None) -> Any:
     evidence = field_plan.get("evidence") or {}
     if sample_id:
         sample_evidence = (evidence.get("samples") or {}).get(sample_id) or {}
-        value = _extract_from_evidence(text, sample_evidence)
+        value = _extract_from_evidence(text, sample_evidence, sample_dir=sample_dir)
         if value is not None:
             return value
-    return _extract_from_evidence(text, evidence)
+    return _extract_from_evidence(text, evidence, sample_dir=sample_dir)
 
 
-def _extract_from_evidence(text: str, evidence: dict[str, Any]) -> Any:
+def _extract_from_evidence(text: str, evidence: dict[str, Any], sample_dir: Path | None = None) -> Any:
     path = evidence.get("path")
     if isinstance(path, str) and path.startswith("json_doc:"):
         value = _extract_json_doc_path(text, path)
+        if value is not None:
+            return value
+    if isinstance(path, str) and path.startswith("json_response:") and sample_dir is not None:
+        value = _extract_json_response_path(sample_dir, path)
         if value is not None:
             return value
     matched = evidence.get("matched_value")
     if matched is not None and str(matched) in text:
         return matched
     return None
+
+
+def _extract_json_response_path(sample_dir: Path, path: str) -> Any:
+    # path format: json_response:{filename}:$.a.b[0]
+    try:
+        _, filename, json_path = path.split(":", 2)
+    except ValueError:
+        return None
+    response_path = sample_dir / "responses" / filename
+    data = load_json_file(response_path)
+    if data is None:
+        return None
+    return get_json_path(data, json_path)
 
 
 def _extract_json_doc_path(text: str, path: str) -> Any:
