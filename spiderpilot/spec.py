@@ -1,72 +1,135 @@
-"""Spec models and loading helpers."""
+"""Spec models and loading helpers.
+
+This module intentionally avoids pydantic for the MVP so SpiderPilot can run in
+minimal Python environments. Validation is explicit and lightweight.
+"""
 
 from __future__ import annotations
 
 import shutil
+from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any
+from urllib.parse import urlparse
 
 import yaml
-from pydantic import BaseModel, Field, HttpUrl, model_validator
 
 
-class ExpectedValue(BaseModel):
-    """Expected sample value matcher."""
-
+@dataclass
+class ExpectedValue:
     equals: Any | None = None
     contains: list[Any] | None = None
     contains_any: list[Any] | None = None
 
-    @model_validator(mode="after")
-    def validate_matcher(self) -> "ExpectedValue":
-        if self.equals is None and not self.contains and not self.contains_any:
+    @classmethod
+    def from_data(cls, data: Any) -> "ExpectedValue":
+        if not isinstance(data, dict):
+            data = {"equals": data}
+        value = cls(
+            equals=data.get("equals"),
+            contains=data.get("contains"),
+            contains_any=data.get("contains_any"),
+        )
+        if value.equals is None and not value.contains and not value.contains_any:
             raise ValueError("expected matcher must define one of: equals, contains, contains_any")
-        return self
+        return value
 
 
-class SampleSpec(BaseModel):
+@dataclass
+class SampleSpec:
     id: str
-    url: HttpUrl
-    expected: dict[str, ExpectedValue] = Field(default_factory=dict)
+    url: str
+    expected: dict[str, ExpectedValue] = field(default_factory=dict)
+
+    @classmethod
+    def from_data(cls, data: dict[str, Any]) -> "SampleSpec":
+        if not isinstance(data, dict):
+            raise ValueError("sample must be a mapping")
+        sample_id = data.get("id")
+        url = data.get("url")
+        if not sample_id:
+            raise ValueError("sample.id is required")
+        if not _is_valid_http_url(url):
+            raise ValueError(f"sample.url must be http/https URL: {url!r}")
+        expected_raw = data.get("expected") or {}
+        if not isinstance(expected_raw, dict):
+            raise ValueError("sample.expected must be a mapping")
+        expected = {name: ExpectedValue.from_data(value) for name, value in expected_raw.items()}
+        return cls(id=str(sample_id), url=str(url), expected=expected)
 
 
-class FieldSpec(BaseModel):
+@dataclass
+class FieldSpec:
     type: str = "string"
     required: bool = False
     description: str | None = None
     normalize: str | None = None
 
+    @classmethod
+    def from_data(cls, data: Any) -> "FieldSpec":
+        if data is None:
+            data = {}
+        if isinstance(data, str):
+            data = {"type": data}
+        if not isinstance(data, dict):
+            raise ValueError("field spec must be a mapping or string")
+        return cls(
+            type=str(data.get("type", "string")),
+            required=bool(data.get("required", False)),
+            description=data.get("description"),
+            normalize=data.get("normalize"),
+        )
 
-class CrawlSpec(BaseModel):
-    version: int = 1
+
+@dataclass
+class CrawlSpec:
+    version: int
     name: str
-    target_type: str = "detail"
+    target_type: str
     samples: list[SampleSpec]
     fields: dict[str, FieldSpec]
 
-    @model_validator(mode="after")
-    def validate_spec(self) -> "CrawlSpec":
-        if not self.samples:
-            raise ValueError("spec must include at least one sample")
-        if not self.fields:
-            raise ValueError("spec must define at least one field")
-        sample_ids = [sample.id for sample in self.samples]
+    @classmethod
+    def from_data(cls, data: dict[str, Any]) -> "CrawlSpec":
+        if not isinstance(data, dict):
+            raise ValueError("spec must be a mapping")
+        name = data.get("name")
+        if not name:
+            raise ValueError("spec.name is required")
+        samples_raw = data.get("samples") or []
+        fields_raw = data.get("fields") or {}
+        if not isinstance(samples_raw, list) or not samples_raw:
+            raise ValueError("spec.samples must include at least one sample")
+        if not isinstance(fields_raw, dict) or not fields_raw:
+            raise ValueError("spec.fields must define at least one field")
+        samples = [SampleSpec.from_data(sample) for sample in samples_raw]
+        fields = {name: FieldSpec.from_data(value) for name, value in fields_raw.items()}
+
+        sample_ids = [sample.id for sample in samples]
         if len(sample_ids) != len(set(sample_ids)):
             raise ValueError("sample ids must be unique")
         unknown_expected = sorted(
             {
-                field
-                for sample in self.samples
-                for field in sample.expected.keys()
-                if field not in self.fields
+                field_name
+                for sample in samples
+                for field_name in sample.expected.keys()
+                if field_name not in fields
             }
         )
         if unknown_expected:
             raise ValueError(f"expected contains fields not defined in fields: {', '.join(unknown_expected)}")
-        return self
+
+        return cls(
+            version=int(data.get("version", 1)),
+            name=str(name),
+            target_type=str(data.get("target_type", "detail")),
+            samples=samples,
+            fields=fields,
+        )
 
 
-class TaskWorkspace(BaseModel):
+@dataclass
+class TaskWorkspace:
     task_name: str
     spec_path: Path
     artifacts_dir: Path
@@ -78,7 +141,7 @@ class TaskWorkspace(BaseModel):
 
 def load_spec(path: Path) -> CrawlSpec:
     data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
-    return CrawlSpec.model_validate(data)
+    return CrawlSpec.from_data(data)
 
 
 def prepare_task_workspace(spec: CrawlSpec, source_path: Path, workspace: Path = Path("workspace")) -> TaskWorkspace:
@@ -137,3 +200,10 @@ def build_task_summary(spec: CrawlSpec, workspace: TaskWorkspace) -> dict[str, A
 
 def write_task_summary(summary: dict[str, Any], path: Path) -> None:
     path.write_text(yaml.safe_dump(summary, allow_unicode=True, sort_keys=False), encoding="utf-8")
+
+
+def _is_valid_http_url(url: Any) -> bool:
+    if not isinstance(url, str):
+        return False
+    parsed = urlparse(url)
+    return parsed.scheme in {"http", "https"} and bool(parsed.netloc)
