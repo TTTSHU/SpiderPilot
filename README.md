@@ -118,6 +118,19 @@ fields:
 
 自动尝试修复 selector、json path 或请求逻辑。
 
+### 7. Anti-Bot Precheck 反爬预检
+
+SpiderPilot 在页面探测后会优先判断目标是否存在反爬：
+
+- 先用无 Cookie 请求建立基线
+- 判断页面是否正常返回业务内容
+- 如果异常，分析状态码、跳转链、Set-Cookie、响应关键词和关键脚本
+- 识别 DataDome、Cloudflare、Akamai、Kasada、PerimeterX、瑞数、字节系签名等常见特征
+- 输出结构化 AntiBot Report
+- 再决定后续走纯 HTTP、Cookie 生成、JS 签名还原、浏览器探测或人工登录态
+
+详细设计见：[`docs/anti_bot_precheck.md`](docs/anti_bot_precheck.md)
+
 ## 推荐工作流
 
 ```text
@@ -146,6 +159,9 @@ SpiderPilot/
 │   ├── workflow.py               # 主工作流编排
 │   ├── models.py                 # Pydantic 数据模型
 │   ├── llm.py                    # LLM 调用封装
+│   │
+│   ├── antibot/                  # 反爬预检模块
+│   │   └── __init__.py
 │   │
 │   ├── probe/                    # 页面探测模块
 │   │   ├── __init__.py
