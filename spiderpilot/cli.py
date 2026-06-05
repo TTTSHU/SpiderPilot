@@ -12,6 +12,10 @@ from spiderpilot.antibot.precheck import run_antibot_precheck
 from spiderpilot.probe.http_probe import run_http_probe
 from spiderpilot.reverse.locator import run_reverse
 from spiderpilot.planner.extraction_plan import build_extraction_plan
+from spiderpilot.generator.codegen import generate_spider
+from spiderpilot.runner.local_runner import run_plan
+from spiderpilot.validator.result_validator import validate_results
+from spiderpilot.repair.auto_repair import build_repair_report
 from spiderpilot.templates.loader import list_templates, load_template
 
 app = typer.Typer(help="SpiderPilot: AI-powered field-driven reverse crawling framework.")
@@ -134,6 +138,54 @@ def plan(
     typer.echo(f"Source: {extraction_plan['source']['type']}")
     typer.echo(f"Confidence: {extraction_plan['source']['confidence']}")
     typer.echo(f"Plan: {plan_path}")
+
+
+@app.command("generate")
+def generate(
+    plan_file: Path = typer.Option(..., "--plan", "-p", help="Extraction Plan YAML file."),
+    workspace: Path = typer.Option(Path("workspace"), "--workspace", "-w", help="Workspace root."),
+) -> None:
+    """Generate extractor code from an Extraction Plan."""
+    result = generate_spider(plan_file, workspace=workspace)
+    typer.echo(f"Generated: {result['path']}")
+
+
+@app.command("run")
+def run(
+    file: Path = typer.Option(..., "--file", "-f", help="Spec YAML file."),
+    plan_file: Path = typer.Option(..., "--plan", "-p", help="Extraction Plan YAML file."),
+    workspace: Path = typer.Option(Path("workspace"), "--workspace", "-w", help="Workspace root."),
+) -> None:
+    """Run an Extraction Plan against collected artifacts."""
+    result = run_plan(file, plan_file, workspace=workspace)
+    typer.echo(f"Run task: {result['task']}")
+    typer.echo(f"Items: {result['items_total']}")
+    typer.echo(f"Result: {result['result_path']}")
+
+
+@app.command("validate")
+def validate(
+    file: Path = typer.Option(..., "--file", "-f", help="Spec YAML file."),
+    result_file: Path = typer.Option(..., "--result", "-r", help="Result JSON file."),
+    workspace: Path = typer.Option(Path("workspace"), "--workspace", "-w", help="Workspace root."),
+) -> None:
+    """Validate result JSON against Spec expected values."""
+    report = validate_results(file, result_file, workspace=workspace)
+    typer.echo(f"Validation task: {report['task']}")
+    typer.echo(f"OK: {report['ok']}")
+    typer.echo(f"Hit rate: {report['field_hit_rate']}")
+
+
+@app.command("repair")
+def repair(
+    validation_file: Path = typer.Option(..., "--validation", "-v", help="Validation YAML file."),
+    workspace: Path = typer.Option(Path("workspace"), "--workspace", "-w", help="Workspace root."),
+) -> None:
+    """Build a repair report from validation failures."""
+    report = build_repair_report(validation_file, workspace=workspace)
+    typer.echo(f"Repair task: {report['task']}")
+    typer.echo(f"Status: {report['status']}")
+    typer.echo(f"Errors: {report['errors_total']}")
 
 
 @app.command("version")
