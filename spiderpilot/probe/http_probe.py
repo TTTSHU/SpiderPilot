@@ -13,6 +13,7 @@ from urllib.request import HTTPCookieProcessor, Request, build_opener
 import yaml
 
 from spiderpilot.antibot.precheck import DEFAULT_HEADERS
+from spiderpilot.probe.indexer import write_probe_index
 from spiderpilot.spec import load_spec
 
 
@@ -61,6 +62,7 @@ def run_http_probe(spec_path: Path, workspace: Path = Path("workspace"), timeout
     report_path = artifact_root / "probe_report.yaml"
     report_path.parent.mkdir(parents=True, exist_ok=True)
     report_path.write_text(yaml.safe_dump(report, allow_unicode=True, sort_keys=False), encoding="utf-8")
+    report["probe_index"] = write_probe_index(spec.name, artifact_root)
     return report
 
 
@@ -96,10 +98,12 @@ def probe_url(sample_id: str, url: str, artifact_dir: Path, timeout: int = 20) -
     headers_path = artifact_dir / "headers.json"
     cookies_path = artifact_dir / "cookies.json"
     meta_path = artifact_dir / "meta.yaml"
+    responses_dir = artifact_dir / "responses"
 
     raw_path.write_bytes(body_bytes)
     headers_path.write_text(json.dumps(headers, ensure_ascii=False, indent=2), encoding="utf-8")
     cookies_path.write_text(json.dumps(_cookies_to_list(cookie_jar), ensure_ascii=False, indent=2), encoding="utf-8")
+    response_files = _write_json_response_if_any(body_bytes, headers, responses_dir)
 
     ok = bool(status_code and 200 <= status_code < 400 and body_bytes)
     meta = {
@@ -114,6 +118,7 @@ def probe_url(sample_id: str, url: str, artifact_dir: Path, timeout: int = 20) -
             "raw_html": str(raw_path),
             "headers": str(headers_path),
             "cookies": str(cookies_path),
+            "json_responses": response_files,
         },
     }
     meta_path.write_text(yaml.safe_dump(meta, allow_unicode=True, sort_keys=False), encoding="utf-8")
@@ -132,8 +137,36 @@ def probe_url(sample_id: str, url: str, artifact_dir: Path, timeout: int = 20) -
             "headers": str(headers_path),
             "cookies": str(cookies_path),
             "meta": str(meta_path),
+            "json_responses": response_files,
         },
     )
+
+
+def _write_json_response_if_any(body_bytes: bytes, headers: dict[str, str], responses_dir: Path) -> list[str]:
+    content_type = _header_value(headers, "content-type").lower()
+    looks_like_json = "json" in content_type or _bytes_look_like_json(body_bytes)
+    if not body_bytes or not looks_like_json:
+        return []
+    try:
+        data = json.loads(body_bytes.decode("utf-8", errors="replace"))
+    except Exception:
+        return []
+    responses_dir.mkdir(parents=True, exist_ok=True)
+    out_path = responses_dir / "response_0.json"
+    out_path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+    return [str(out_path)]
+
+
+def _header_value(headers: dict[str, str], name: str) -> str:
+    for key, value in headers.items():
+        if key.lower() == name.lower():
+            return value
+    return ""
+
+
+def _bytes_look_like_json(body_bytes: bytes) -> bool:
+    stripped = body_bytes.lstrip()[:1]
+    return stripped in {b"{", b"["}
 
 
 def _cookies_to_list(cookie_jar: CookieJar) -> list[dict[str, Any]]:

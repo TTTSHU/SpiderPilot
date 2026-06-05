@@ -10,6 +10,7 @@ import yaml
 
 from spiderpilot.spec import CrawlSpec, ExpectedValue, load_spec
 from spiderpilot.reverse.json_locator import extract_embedded_json, find_json_paths, load_json_file
+from spiderpilot.reverse.html_selector import infer_css_candidates, infer_xpath_candidates
 
 
 @dataclass
@@ -48,6 +49,8 @@ def run_reverse(spec_path: Path, workspace: Path = Path("workspace")) -> dict[st
         text = raw_path.read_text(encoding="utf-8", errors="replace")
         for field_name, expected in sample.expected.items():
             all_candidates.extend(locate_expected_in_text(field_name, expected, sample.id, text))
+            all_candidates.extend(locate_expected_in_html_selectors(field_name, expected, sample.id, text))
+            all_candidates.extend(locate_expected_in_xpath(field_name, expected, sample.id, text))
             all_candidates.extend(locate_expected_in_embedded_json(field_name, expected, sample.id, text))
             all_candidates.extend(locate_expected_in_json_responses(field_name, expected, sample.id, raw_path.parent))
 
@@ -75,6 +78,58 @@ def locate_expected_in_text(field_name: str, expected: ExpectedValue, sample_id:
         candidates.extend(_find_value(field_name, sample_id, text, str(value), "contains", 0.65))
     for value in expected.contains_any or []:
         candidates.extend(_find_value(field_name, sample_id, text, str(value), "contains_any", 0.55))
+    return candidates
+
+
+def locate_expected_in_html_selectors(field_name: str, expected: ExpectedValue, sample_id: str, html: str) -> list[FieldCandidate]:
+    candidates: list[FieldCandidate] = []
+    expected_values: list[tuple[str, str, float]] = []
+    if expected.equals is not None:
+        expected_values.append((str(expected.equals), "equals", 0.78))
+    for value in expected.contains or []:
+        expected_values.append((str(value), "contains", 0.7))
+    for value in expected.contains_any or []:
+        expected_values.append((str(value), "contains_any", 0.62))
+    for value, match_type, base_confidence in expected_values:
+        for hit in infer_css_candidates(html, value):
+            candidates.append(
+                FieldCandidate(
+                    field=field_name,
+                    source="html_selector",
+                    path=hit["selector"],
+                    sample_id=sample_id,
+                    match_type=match_type,
+                    matched_value=value,
+                    context=hit.get("text") or str(hit.get("attrs")),
+                    confidence=round(max(base_confidence, hit["score"]), 4),
+                )
+            )
+    return candidates
+
+
+def locate_expected_in_xpath(field_name: str, expected: ExpectedValue, sample_id: str, html: str) -> list[FieldCandidate]:
+    candidates: list[FieldCandidate] = []
+    expected_values: list[tuple[str, str, float]] = []
+    if expected.equals is not None:
+        expected_values.append((str(expected.equals), "equals", 0.76))
+    for value in expected.contains or []:
+        expected_values.append((str(value), "contains", 0.68))
+    for value in expected.contains_any or []:
+        expected_values.append((str(value), "contains_any", 0.6))
+    for value, match_type, base_confidence in expected_values:
+        for hit in infer_xpath_candidates(html, value):
+            candidates.append(
+                FieldCandidate(
+                    field=field_name,
+                    source="html_xpath",
+                    path=hit["xpath"],
+                    sample_id=sample_id,
+                    match_type=match_type,
+                    matched_value=value,
+                    context=hit.get("text") or str(hit.get("attrs")),
+                    confidence=round(max(base_confidence, hit["score"]), 4),
+                )
+            )
     return candidates
 
 
@@ -109,9 +164,7 @@ def locate_expected_in_embedded_json(field_name: str, expected: ExpectedValue, s
 
 def locate_expected_in_json_responses(field_name: str, expected: ExpectedValue, sample_id: str, sample_dir: Path) -> list[FieldCandidate]:
     candidates: list[FieldCandidate] = []
-    response_dir = sample_dir / "responses"
-    if not response_dir.exists():
-        return candidates
+    response_dirs = [sample_dir / "responses", sample_dir / "cloak" / "responses"]
     expected_values: list[tuple[str, str, float]] = []
     if expected.equals is not None:
         expected_values.append((str(expected.equals), "equals", 0.95))
@@ -120,24 +173,30 @@ def locate_expected_in_json_responses(field_name: str, expected: ExpectedValue, 
     for value in expected.contains_any or []:
         expected_values.append((str(value), "contains_any", 0.75))
 
-    for json_file in sorted(response_dir.glob("*.json")):
-        data = load_json_file(json_file)
-        if data is None:
+    for response_dir in response_dirs:
+        if not response_dir.exists():
             continue
-        for value, match_type, confidence in expected_values:
-            for hit in find_json_paths(data, value):
-                candidates.append(
-                    FieldCandidate(
-                        field=field_name,
-                        source="json_response",
-                        path=f"json_response:{json_file.name}:{hit['path']}",
-                        sample_id=sample_id,
-                        match_type=match_type,
-                        matched_value=hit["value"],
-                        context=f"{json_file.name} {hit['path']}",
-                        confidence=confidence,
+        is_cloak = response_dir == sample_dir / "cloak" / "responses"
+        source = "cloak_json_response" if is_cloak else "json_response"
+        for json_file in sorted(response_dir.glob("*.json")):
+            data = load_json_file(json_file)
+            if data is None:
+                continue
+            for value, match_type, confidence in expected_values:
+                for hit in find_json_paths(data, value):
+                    rel_name = f"cloak/{json_file.name}" if is_cloak else json_file.name
+                    candidates.append(
+                        FieldCandidate(
+                            field=field_name,
+                            source=source,
+                            path=f"json_response:{rel_name}:{hit['path']}",
+                            sample_id=sample_id,
+                            match_type=match_type,
+                            matched_value=hit["value"],
+                            context=f"{rel_name} {hit['path']}",
+                            confidence=confidence,
+                        )
                     )
-                )
     return candidates
 
 
@@ -151,9 +210,47 @@ def group_candidates(spec: CrawlSpec, candidates: list[FieldCandidate]) -> dict[
             "samples_total": len(spec.samples),
             "hit_rate": round(len(samples_matched) / len(spec.samples), 4) if spec.samples else 0,
             "best_confidence": max((candidate.confidence for candidate in field_candidates), default=0),
-            "candidates": [candidate.to_dict() for candidate in field_candidates[:20]],
+            "by_source": _count_by(field_candidates, "source"),
+            "stable_path_groups": _stable_path_groups(field_candidates),
+            "candidates": [candidate.to_dict() for candidate in _sort_candidates(field_candidates)[:30]],
         }
     return grouped
+
+
+def _sort_candidates(candidates: list[FieldCandidate]) -> list[FieldCandidate]:
+    source_priority = {"json_response": 4, "embedded_json": 3, "window_initial_state": 3, "window_preloaded_state": 3, "raw_html": 1}
+    return sorted(candidates, key=lambda c: (source_priority.get(c.source, 0), c.confidence), reverse=True)
+
+
+def _count_by(candidates: list[FieldCandidate], attr: str) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for candidate in candidates:
+        key = str(getattr(candidate, attr))
+        counts[key] = counts.get(key, 0) + 1
+    return counts
+
+
+def _stable_path_groups(candidates: list[FieldCandidate]) -> list[dict[str, Any]]:
+    groups: dict[tuple[str, str], set[str]] = {}
+    for candidate in candidates:
+        normalized = _normalize_path_for_group(candidate.path)
+        groups.setdefault((candidate.source, normalized), set()).add(candidate.sample_id)
+    return [
+        {"source": source, "path_shape": path, "samples_matched": len(samples)}
+        for (source, path), samples in sorted(groups.items(), key=lambda item: len(item[1]), reverse=True)
+    ][:10]
+
+
+def _normalize_path_for_group(path: str) -> str:
+    if path.startswith("json_response:"):
+        parts = path.split(":", 2)
+        if len(parts) == 3:
+            return f"json_response:*:{parts[2]}"
+    if path.startswith("json_doc:"):
+        parts = path.split(":", 2)
+        if len(parts) == 3:
+            return f"json_doc:*:{parts[2]}"
+    return path
 
 
 def _find_value(

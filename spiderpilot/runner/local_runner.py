@@ -13,6 +13,7 @@ from typing import Any
 import yaml
 
 from spiderpilot.reverse.json_locator import extract_embedded_json, get_json_path, load_json_file
+from spiderpilot.runner.html_extract import extract_by_css_selector, extract_by_xpath
 from spiderpilot.spec import load_spec
 
 
@@ -56,10 +57,25 @@ def _extract_from_evidence(text: str, evidence: dict[str, Any], sample_dir: Path
         value = _extract_json_response_path(sample_dir, path)
         if value is not None:
             return value
+    source = evidence.get("source")
+    if source == "html_selector" or (isinstance(path, str) and _looks_like_css_selector(path)):
+        value = extract_by_css_selector(text, path)
+        if value is not None:
+            return value
+    if source == "html_xpath" or (isinstance(path, str) and path.startswith("//")):
+        value = extract_by_xpath(text, path)
+        if value is not None:
+            return value
     matched = evidence.get("matched_value")
     if matched is not None and str(matched) in text:
         return matched
     return None
+
+
+def _looks_like_css_selector(path: str | None) -> bool:
+    if not isinstance(path, str):
+        return False
+    return path.startswith("#") or "[" in path or "." in path or path.isalpha()
 
 
 def _extract_json_response_path(sample_dir: Path, path: str) -> Any:
@@ -68,7 +84,10 @@ def _extract_json_response_path(sample_dir: Path, path: str) -> Any:
         _, filename, json_path = path.split(":", 2)
     except ValueError:
         return None
-    response_path = sample_dir / "responses" / filename
+    if filename.startswith("cloak/"):
+        response_path = sample_dir / "cloak" / "responses" / filename.split("/", 1)[1]
+    else:
+        response_path = sample_dir / "responses" / filename
     data = load_json_file(response_path)
     if data is None:
         return None

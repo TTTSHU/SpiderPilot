@@ -7,6 +7,8 @@ from typing import Any
 
 import yaml
 
+from spiderpilot.planner.scoring import score_candidate
+from spiderpilot.planner.url_pattern import infer_url_pattern
 from spiderpilot.spec import load_spec
 
 
@@ -35,11 +37,14 @@ def build_extraction_plan(spec_path: Path, workspace: Path = Path("workspace")) 
                     "samples_matched": field_candidates.get("samples_matched", 0),
                     "samples_total": field_candidates.get("samples_total", len(spec.samples)),
                     "hit_rate": field_candidates.get("hit_rate", 0),
+                    "by_source": field_candidates.get("by_source", {}),
+                    "stable_path_groups": field_candidates.get("stable_path_groups", []),
                     "sample_id": best.get("sample_id"),
                     "matched_value": best.get("matched_value"),
                     "context": best.get("context"),
                     "samples": _sample_evidence(field_candidates.get("candidates") or []),
                 },
+                "status": _field_status(field_candidates, field_spec.required),
             }
         else:
             fields[field_name] = {
@@ -62,9 +67,11 @@ def build_extraction_plan(spec_path: Path, workspace: Path = Path("workspace")) 
         "name": spec.name,
         "target_type": spec.target_type,
         "source": {
-            "type": "raw_html",
-            "strategy": "text_offset_mvp",
+            "type": _primary_source(fields),
+            "strategy": "source_aware_mvp",
             "confidence": _overall_confidence(fields),
+            "sample_urls": [sample.url for sample in spec.samples],
+            "url_pattern": infer_url_pattern([sample.url for sample in spec.samples]),
         },
         "fields": fields,
         "notes": [
@@ -79,6 +86,15 @@ def build_extraction_plan(spec_path: Path, workspace: Path = Path("workspace")) 
     return plan
 
 
+def _field_status(field_candidates: dict[str, Any], required: bool) -> str:
+    hit_rate = float(field_candidates.get("hit_rate") or 0)
+    if hit_rate >= 1:
+        return "resolved"
+    if hit_rate > 0:
+        return "partial" if not required else "needs_review"
+    return "unresolved"
+
+
 def _sample_evidence(candidates: list[dict[str, Any]]) -> dict[str, Any]:
     evidence: dict[str, Any] = {}
     by_sample: dict[str, list[dict[str, Any]]] = {}
@@ -91,6 +107,7 @@ def _sample_evidence(candidates: list[dict[str, Any]]) -> dict[str, Any]:
         best = _select_best_candidate(sample_candidates)
         if best:
             evidence[sample_id] = {
+                "source": best.get("source"),
                 "path": best.get("path"),
                 "matched_value": best.get("matched_value"),
                 "match_type": best.get("match_type"),
@@ -105,9 +122,16 @@ def _select_best_candidate(candidates: list[dict[str, Any]]) -> dict[str, Any] |
         return None
     return sorted(
         candidates,
-        key=lambda candidate: (candidate.get("confidence", 0), -len(str(candidate.get("path", "")))),
+        key=lambda candidate: (score_candidate(candidate), candidate.get("confidence", 0), -len(str(candidate.get("path", "")))),
         reverse=True,
     )[0]
+
+
+def _primary_source(fields: dict[str, Any]) -> str:
+    sources = [field.get("source") for field in fields.values() if field.get("source")]
+    if not sources:
+        return "unresolved"
+    return max(set(sources), key=sources.count)
 
 
 def _overall_confidence(fields: dict[str, Any]) -> float:
