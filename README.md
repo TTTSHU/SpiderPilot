@@ -91,7 +91,7 @@ fields:
 
 - API Spider
 - HTML Spider
-- Playwright 辅助探测
+- CloakBrowser 辅助探测
 - JSONPath 字段提取
 - CSS / XPath 字段提取
 - 字段标准化处理
@@ -166,7 +166,7 @@ SpiderPilot/
 │   ├── probe/                    # 页面探测模块
 │   │   ├── __init__.py
 │   │   ├── http_probe.py         # httpx/requests 原始请求
-│   │   ├── browser_probe.py      # Playwright 浏览器渲染
+│   │   ├── browser_probe.py      # CloakBrowser 浏览器渲染
 │   │   └── network_capture.py    # Network/HAR/API 响应捕获
 │   │
 │   ├── reverse/                  # 自动逆向模块
@@ -264,7 +264,7 @@ spiderpilot validate product_detail
 
 - Python
 - Scrapy
-- Playwright
+- CloakBrowser
 - httpx
 - parsel / lxml
 - Pydantic
