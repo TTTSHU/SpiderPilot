@@ -9,6 +9,7 @@ import typer
 from spiderpilot.platform.initializer import init_platform
 from spiderpilot.spec import build_task_summary, load_spec, prepare_task_workspace, write_task_summary
 from spiderpilot.antibot.precheck import run_antibot_precheck
+from spiderpilot.probe.http_probe import run_http_probe
 from spiderpilot.templates.loader import list_templates, load_template
 
 app = typer.Typer(help="SpiderPilot: AI-powered field-driven reverse crawling framework.")
@@ -85,6 +86,20 @@ def antibot(
     typer.echo(f"Samples flagged: {report['samples_flagged']}/{report['samples_total']}")
     if report.get("primary_vendor"):
         typer.echo(f"Primary vendor: {report['primary_vendor']}")
+    typer.echo(f"Report: {report_path}")
+
+
+@app.command("probe")
+def probe(
+    file: Path = typer.Option(..., "--file", "-f", help="Spec YAML file."),
+    workspace: Path = typer.Option(Path("workspace"), "--workspace", "-w", help="Workspace root."),
+    timeout: int = typer.Option(20, "--timeout", help="HTTP timeout seconds."),
+) -> None:
+    """Collect HTTP page artifacts for all Spec samples."""
+    report = run_http_probe(file, workspace=workspace, timeout=timeout)
+    report_path = workspace / "artifacts" / report["task"] / "probe_report.yaml"
+    typer.echo(f"Probe task: {report['task']}")
+    typer.echo(f"Samples OK: {report['samples_ok']}/{report['samples_total']}")
     typer.echo(f"Report: {report_path}")
 
 
