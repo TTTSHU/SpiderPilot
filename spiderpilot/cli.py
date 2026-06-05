@@ -8,6 +8,7 @@ import typer
 
 from spiderpilot.platform.initializer import init_platform
 from spiderpilot.spec import build_task_summary, load_spec, prepare_task_workspace, write_task_summary
+from spiderpilot.antibot.precheck import run_antibot_precheck
 from spiderpilot.templates.loader import list_templates, load_template
 
 app = typer.Typer(help="SpiderPilot: AI-powered field-driven reverse crawling framework.")
@@ -69,6 +70,22 @@ def create(
     typer.echo(f"Artifacts: {task_workspace.artifacts_dir}")
     typer.echo(f"Summary: {task_workspace.summary_path}")
     typer.echo("Next: spiderpilot antibot -f " + str(task_workspace.spec_path))
+
+
+@app.command("antibot")
+def antibot(
+    file: Path = typer.Option(..., "--file", "-f", help="Spec YAML file."),
+    workspace: Path = typer.Option(Path("workspace"), "--workspace", "-w", help="Workspace root."),
+    timeout: int = typer.Option(15, "--timeout", help="HTTP timeout seconds."),
+) -> None:
+    """Run no-cookie HTTP anti-bot precheck for all Spec samples."""
+    report = run_antibot_precheck(file, workspace=workspace, timeout=timeout)
+    report_path = workspace / "artifacts" / report["task"] / "antibot_report.yaml"
+    typer.echo(f"AntiBot status: {report['status']}")
+    typer.echo(f"Samples flagged: {report['samples_flagged']}/{report['samples_total']}")
+    if report.get("primary_vendor"):
+        typer.echo(f"Primary vendor: {report['primary_vendor']}")
+    typer.echo(f"Report: {report_path}")
 
 
 @app.command("version")
