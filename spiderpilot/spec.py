@@ -158,7 +158,8 @@ def prepare_task_workspace(spec: CrawlSpec, source_path: Path, workspace: Path =
         (artifacts_dir / sample.id).mkdir(parents=True, exist_ok=True)
 
     spec_path = specs_dir / f"{spec.name}.yaml"
-    shutil.copyfile(source_path, spec_path)
+    if source_path.resolve() != spec_path.resolve():
+        shutil.copyfile(source_path, spec_path)
 
     return TaskWorkspace(
         task_name=spec.name,

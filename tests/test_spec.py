@@ -22,3 +22,12 @@ def test_prepare_task_workspace(tmp_path):
     summary = build_task_summary(spec, workspace)
     assert summary["task"] == "product_detail_demo"
     assert summary["samples_total"] == 2
+
+
+def test_prepare_task_workspace_same_file(tmp_path):
+    spec_path = Path("examples/product_detail.yaml")
+    spec = load_spec(spec_path)
+    workspace = prepare_task_workspace(spec, spec_path, workspace=tmp_path)
+    # Calling again with the already-copied spec should not raise SameFileError.
+    workspace2 = prepare_task_workspace(spec, workspace.spec_path, workspace=tmp_path)
+    assert workspace2.spec_path.exists()
