@@ -11,6 +11,7 @@ from spiderpilot.spec import build_task_summary, load_spec, prepare_task_workspa
 from spiderpilot.antibot.precheck import run_antibot_precheck
 from spiderpilot.probe.http_probe import run_http_probe
 from spiderpilot.reverse.locator import run_reverse
+from spiderpilot.planner.extraction_plan import build_extraction_plan
 from spiderpilot.templates.loader import list_templates, load_template
 
 app = typer.Typer(help="SpiderPilot: AI-powered field-driven reverse crawling framework.")
@@ -119,6 +120,20 @@ def reverse(
     typer.echo(f"Reverse task: {report['task']}")
     typer.echo(f"Candidates: {report['candidates_total']}")
     typer.echo(f"Report: {candidates_path}")
+
+
+@app.command("plan")
+def plan(
+    file: Path = typer.Option(..., "--file", "-f", help="Spec YAML file."),
+    workspace: Path = typer.Option(Path("workspace"), "--workspace", "-w", help="Workspace root."),
+) -> None:
+    """Build an Extraction Plan from reverse candidates."""
+    extraction_plan = build_extraction_plan(file, workspace=workspace)
+    plan_path = workspace / "plans" / f"{extraction_plan['name']}.yaml"
+    typer.echo(f"Plan task: {extraction_plan['name']}")
+    typer.echo(f"Source: {extraction_plan['source']['type']}")
+    typer.echo(f"Confidence: {extraction_plan['source']['confidence']}")
+    typer.echo(f"Plan: {plan_path}")
 
 
 @app.command("version")
