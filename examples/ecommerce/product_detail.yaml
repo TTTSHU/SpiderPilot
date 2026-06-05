@@ -1,0 +1,43 @@
+version: 1
+name: product_detail_demo
+target_type: product_detail
+
+samples:
+  - id: sample_1
+    url: "https://example.com/product/1001"
+    expected:
+      title:
+        equals: "Apple iPhone 15 128GB Black"
+      price:
+        equals: "3999.00"
+      shop_name:
+        equals: "SuperStore"
+      images:
+        contains:
+          - "iphone-15"
+
+  - id: sample_2
+    url: "https://example.com/product/1002"
+    expected:
+      title:
+        equals: "Samsung Galaxy S24 256GB"
+      price:
+        equals: "4599.00"
+      shop_name:
+        equals: "MobileWorld"
+
+fields:
+  title:
+    type: string
+    required: true
+  price:
+    type: decimal
+    required: true
+    normalize: price
+  shop_name:
+    type: string
+    required: false
+  images:
+    type: list[string]
+    required: false
+    normalize: url

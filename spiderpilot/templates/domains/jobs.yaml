@@ -1,0 +1,57 @@
+version: 1
+name: jobs
+description: 招聘/职位采集模板。
+
+entities:
+  job:
+    description: 职位
+  company:
+    description: 公司
+  recruiter:
+    description: 招聘联系人
+  search_keyword:
+    description: 搜索关键词
+
+spiders:
+  job_detail:
+    role: detail_collector
+    page_type: detail
+    entity: job
+    description: 采集职位详情
+
+  search_jobs:
+    role: search_discoverer
+    page_type: search
+    input_entity: search_keyword
+    output_entity: job
+    description: 从搜索结果发现职位
+    pushes_to:
+      - job_detail
+
+  company_detail:
+    role: detail_collector
+    page_type: profile
+    entity: company
+    description: 采集公司详情
+
+crawl_graph:
+  nodes:
+    - id: search_jobs
+      role: search_discoverer
+      input_entity: search_keyword
+      output_entity: job
+    - id: job_detail
+      role: detail_collector
+      input_entity: job
+      output_entity: job
+    - id: company_detail
+      role: detail_collector
+      input_entity: company
+      output_entity: company
+  edges:
+    - from: search_jobs
+      to: job_detail
+      via: discovered_url
+    - from: job_detail
+      to: company_detail
+      via: company_url

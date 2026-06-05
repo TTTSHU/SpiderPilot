@@ -1,0 +1,74 @@
+version: 1
+name: social_media
+description: 社媒/内容流采集模板。
+
+entities:
+  post:
+    description: 帖子/动态
+  user:
+    description: 用户
+  comment:
+    description: 评论
+  topic:
+    description: 话题
+
+spiders:
+  post_detail:
+    role: detail_collector
+    page_type: detail
+    entity: post
+    description: 采集帖子详情
+
+  user_feed:
+    role: feed_collector
+    page_type: feed
+    input_entity: user
+    output_entity: post
+    description: 从用户主页/动态流发现帖子
+    pushes_to:
+      - post_detail
+
+  topic_feed:
+    role: feed_collector
+    page_type: feed
+    input_entity: topic
+    output_entity: post
+    description: 从话题流发现帖子
+    pushes_to:
+      - post_detail
+
+  comment_increment:
+    role: incremental_discoverer
+    page_type: list
+    input_entity: post
+    output_entity: comment
+    description: 增量采集评论
+
+crawl_graph:
+  nodes:
+    - id: user_feed
+      role: feed_collector
+      input_entity: user
+      output_entity: post
+    - id: topic_feed
+      role: feed_collector
+      input_entity: topic
+      output_entity: post
+    - id: post_detail
+      role: detail_collector
+      input_entity: post
+      output_entity: post
+    - id: comment_increment
+      role: incremental_discoverer
+      input_entity: post
+      output_entity: comment
+  edges:
+    - from: user_feed
+      to: post_detail
+      via: discovered_url
+    - from: topic_feed
+      to: post_detail
+      via: discovered_url
+    - from: post_detail
+      to: comment_increment
+      via: entity_id

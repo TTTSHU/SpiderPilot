@@ -1,0 +1,24 @@
+version: 1
+name: real_estate_listing_detail_demo
+target_type: detail
+samples:
+  - id: sample_1
+    url: "https://example.com/house/1001"
+    expected:
+      title:
+        equals: "2 Bedroom Apartment"
+      price:
+        equals: "2500"
+      address:
+        contains:
+          - "Main Street"
+fields:
+  title:
+    type: string
+    required: true
+  price:
+    type: decimal
+    required: true
+  address:
+    type: string
+    required: false

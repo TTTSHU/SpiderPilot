@@ -329,6 +329,39 @@ spiderpilot validate product_detail
 - pytest
 - OpenAI API / Local LLM
 
+
+## CLI 快速示例
+
+```bash
+# 查看可用行业模板
+spiderpilot template list
+
+# 初始化平台工作区
+spiderpilot platform init demo --domain example.com --template ecommerce
+
+# 创建任务
+spiderpilot create -f examples/ecommerce/product_detail.yaml
+
+# 一键执行 MVP 工作流
+spiderpilot create -f examples/ecommerce/product_detail.yaml --run-all
+
+# 分步调试
+spiderpilot antibot -f workspace/specs/product_detail_demo.yaml
+spiderpilot probe -f workspace/specs/product_detail_demo.yaml
+spiderpilot reverse -f workspace/specs/product_detail_demo.yaml
+spiderpilot plan -f workspace/specs/product_detail_demo.yaml
+spiderpilot generate -p workspace/plans/product_detail_demo.yaml --kind python
+spiderpilot generate -p workspace/plans/product_detail_demo.yaml --kind scrapy
+spiderpilot run -f workspace/specs/product_detail_demo.yaml -p workspace/plans/product_detail_demo.yaml --mode artifacts
+spiderpilot run -f workspace/specs/product_detail_demo.yaml -p workspace/plans/product_detail_demo.yaml --mode http
+spiderpilot validate -f workspace/specs/product_detail_demo.yaml -r workspace/results/product_detail_demo.json
+spiderpilot repair-loop -f workspace/specs/product_detail_demo.yaml
+```
+
+## 当前状态
+
+当前能力和未完成事项见：[`docs/current_status.md`](docs/current_status.md)
+
 ## 项目状态
 
 SpiderPilot 当前处于早期设计与 MVP 开发阶段。

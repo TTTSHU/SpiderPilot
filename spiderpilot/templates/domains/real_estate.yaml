@@ -1,0 +1,57 @@
+version: 1
+name: real_estate
+description: 房产/租售房采集模板。
+
+entities:
+  listing:
+    description: 房源
+  community:
+    description: 小区/社区
+  agent:
+    description: 经纪人
+  city_area:
+    description: 城市区域
+
+spiders:
+  listing_detail:
+    role: detail_collector
+    page_type: detail
+    entity: listing
+    description: 采集房源详情
+
+  area_listing:
+    role: list_discoverer
+    page_type: list
+    input_entity: city_area
+    output_entity: listing
+    description: 从区域列表发现房源
+    pushes_to:
+      - listing_detail
+
+  community_detail:
+    role: detail_collector
+    page_type: profile
+    entity: community
+    description: 采集小区详情
+
+crawl_graph:
+  nodes:
+    - id: area_listing
+      role: list_discoverer
+      input_entity: city_area
+      output_entity: listing
+    - id: listing_detail
+      role: detail_collector
+      input_entity: listing
+      output_entity: listing
+    - id: community_detail
+      role: detail_collector
+      input_entity: community
+      output_entity: community
+  edges:
+    - from: area_listing
+      to: listing_detail
+      via: discovered_url
+    - from: listing_detail
+      to: community_detail
+      via: community_url

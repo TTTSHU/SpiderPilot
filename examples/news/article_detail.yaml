@@ -1,0 +1,24 @@
+version: 1
+name: news_article_detail_demo
+target_type: detail
+samples:
+  - id: sample_1
+    url: "https://example.com/news/1001"
+    expected:
+      title:
+        equals: "Example Breaking News"
+      author:
+        equals: "Jane Doe"
+      published_at:
+        contains:
+          - "2026"
+fields:
+  title:
+    type: string
+    required: true
+  author:
+    type: string
+    required: false
+  published_at:
+    type: datetime
+    required: false
