@@ -15,6 +15,7 @@ from spiderpilot.planner.extraction_plan import build_extraction_plan
 from spiderpilot.generator.codegen import generate_spider
 from spiderpilot.runner.local_runner import run_plan
 from spiderpilot.validator.result_validator import validate_results
+from spiderpilot.workflow import create_task, run_all
 from spiderpilot.repair.auto_repair import build_repair_report
 from spiderpilot.templates.loader import list_templates, load_template
 
@@ -59,17 +60,25 @@ def platform_init(
 def create(
     file: Path = typer.Option(..., "--file", "-f", help="Spec YAML file."),
     workspace: Path = typer.Option(Path("workspace"), "--workspace", "-w", help="Workspace root."),
+    run_all_steps: bool = typer.Option(False, "--run-all", help="Run the full 8-step MVP workflow after creating the task."),
+    skip_network: bool = typer.Option(False, "--skip-network", help="Skip antibot/probe and reuse existing raw.html artifacts. Useful for offline fixtures."),
+    timeout: int = typer.Option(20, "--timeout", help="HTTP timeout seconds for antibot/probe."),
 ) -> None:
     """Create a SpiderPilot task workspace from a Spec file.
 
-    MVP behavior: validate the Spec, copy it into workspace/specs, create
-    artifacts/plans/generated_spiders/results paths, and print a task summary.
+    Use --run-all to execute the full MVP workflow:
+    create → antibot → probe → reverse → plan → generate → run → validate → repair.
     """
-    spec = load_spec(file)
-    task_workspace = prepare_task_workspace(spec, source_path=file, workspace=workspace)
-    summary = build_task_summary(spec, task_workspace)
-    write_task_summary(summary, task_workspace.summary_path)
+    if run_all_steps:
+        report = run_all(file, workspace=workspace, timeout=timeout, skip_network=skip_network)
+        typer.echo(f"Workflow task: {report['task']}")
+        typer.echo(f"OK: {report['ok']}")
+        typer.echo(f"Workflow report: {report['workflow_report_path']}")
+        return
 
+    created = create_task(file, workspace=workspace)
+    spec = created["spec"]
+    task_workspace = created["workspace"]
     typer.echo(f"Task created: {spec.name}")
     typer.echo(f"Samples: {len(spec.samples)}")
     typer.echo(f"Fields: {', '.join(spec.fields.keys())}")
