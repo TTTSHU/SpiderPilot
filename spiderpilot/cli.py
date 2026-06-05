@@ -10,6 +10,7 @@ from spiderpilot.platform.initializer import init_platform
 from spiderpilot.spec import build_task_summary, load_spec, prepare_task_workspace, write_task_summary
 from spiderpilot.antibot.precheck import run_antibot_precheck
 from spiderpilot.probe.http_probe import run_http_probe
+from spiderpilot.reverse.locator import run_reverse
 from spiderpilot.templates.loader import list_templates, load_template
 
 app = typer.Typer(help="SpiderPilot: AI-powered field-driven reverse crawling framework.")
@@ -101,6 +102,23 @@ def probe(
     typer.echo(f"Probe task: {report['task']}")
     typer.echo(f"Samples OK: {report['samples_ok']}/{report['samples_total']}")
     typer.echo(f"Report: {report_path}")
+
+
+@app.command("reverse")
+def reverse(
+    file: Path = typer.Option(..., "--file", "-f", help="Spec YAML file."),
+    workspace: Path = typer.Option(Path("workspace"), "--workspace", "-w", help="Workspace root."),
+) -> None:
+    """Reverse field locations from collected artifacts.
+
+    MVP behavior: search expected sample values inside raw.html artifacts and
+    write candidates.yaml.
+    """
+    report = run_reverse(file, workspace=workspace)
+    candidates_path = workspace / "artifacts" / report["task"] / "candidates.yaml"
+    typer.echo(f"Reverse task: {report['task']}")
+    typer.echo(f"Candidates: {report['candidates_total']}")
+    typer.echo(f"Report: {candidates_path}")
 
 
 @app.command("version")
