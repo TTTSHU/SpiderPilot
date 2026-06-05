@@ -25,9 +25,13 @@ def _render_python_extractor(plan: dict[str, Any], class_name: str) -> str:
     fields = plan.get("fields") or {}
     field_lines = []
     for name, info in fields.items():
-        value = (info.get("evidence") or {}).get("matched_value")
-        # MVP generated code records evidence values. Later versions replace this
-        # with CSS/XPath/JSONPath/API extraction logic.
+        evidence = info.get("evidence") or {}
+        path = evidence.get("path")
+        value = evidence.get("matched_value")
+        # MVP generated code records extraction evidence. JSON paths are surfaced
+        # in comments for review; later versions will emit full Scrapy extraction.
+        if isinstance(path, str) and path.startswith("json_doc:"):
+            field_lines.append(f"        # {name}: {path}")
         field_lines.append(f"        item[{name!r}] = {value!r}")
     if not field_lines:
         field_lines.append("        item = {}")

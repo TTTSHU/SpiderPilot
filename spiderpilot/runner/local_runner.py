@@ -12,6 +12,7 @@ from typing import Any
 
 import yaml
 
+from spiderpilot.reverse.json_locator import extract_embedded_json, get_json_path
 from spiderpilot.spec import load_spec
 
 
@@ -39,10 +40,32 @@ def _extract_mvp_value(text: str, field_plan: dict[str, Any], sample_id: str | N
     evidence = field_plan.get("evidence") or {}
     if sample_id:
         sample_evidence = (evidence.get("samples") or {}).get(sample_id) or {}
-        matched = sample_evidence.get("matched_value")
-        if matched is not None and str(matched) in text:
-            return matched
+        value = _extract_from_evidence(text, sample_evidence)
+        if value is not None:
+            return value
+    return _extract_from_evidence(text, evidence)
+
+
+def _extract_from_evidence(text: str, evidence: dict[str, Any]) -> Any:
+    path = evidence.get("path")
+    if isinstance(path, str) and path.startswith("json_doc:"):
+        value = _extract_json_doc_path(text, path)
+        if value is not None:
+            return value
     matched = evidence.get("matched_value")
     if matched is not None and str(matched) in text:
         return matched
     return None
+
+
+def _extract_json_doc_path(text: str, path: str) -> Any:
+    # path format: json_doc:{index}:$.a.b[0]
+    try:
+        _, index_text, json_path = path.split(":", 2)
+        doc_index = int(index_text)
+    except ValueError:
+        return None
+    docs = extract_embedded_json(text)
+    if doc_index >= len(docs):
+        return None
+    return get_json_path(docs[doc_index].data, json_path)

@@ -22,3 +22,8 @@ def test_matches_expected():
 
 def test_suggest_action():
     assert "required" in _suggest_action({"reason": "required_empty"})["action"]
+
+
+def test_extract_json_doc_path_value():
+    html = '<script type="application/ld+json">{"name":"Example Product"}</script>'
+    assert _extract_mvp_value(html, {"evidence": {"path": "json_doc:0:$.name"}}) == "Example Product"
