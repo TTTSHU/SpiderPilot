@@ -7,6 +7,7 @@ from pathlib import Path
 import typer
 
 from spiderpilot.platform.initializer import init_platform
+from spiderpilot.spec import build_task_summary, load_spec, prepare_task_workspace, write_task_summary
 from spiderpilot.templates.loader import list_templates, load_template
 
 app = typer.Typer(help="SpiderPilot: AI-powered field-driven reverse crawling framework.")
@@ -44,6 +45,30 @@ def platform_init(
     typer.echo(f"Created platform workspace: {platform_dir}")
     typer.echo(f"- {platform_dir / 'platform.yaml'}")
     typer.echo(f"- {platform_dir / 'spider_plan.yaml'}")
+
+
+@app.command("create")
+def create(
+    file: Path = typer.Option(..., "--file", "-f", help="Spec YAML file."),
+    workspace: Path = typer.Option(Path("workspace"), "--workspace", "-w", help="Workspace root."),
+) -> None:
+    """Create a SpiderPilot task workspace from a Spec file.
+
+    MVP behavior: validate the Spec, copy it into workspace/specs, create
+    artifacts/plans/generated_spiders/results paths, and print a task summary.
+    """
+    spec = load_spec(file)
+    task_workspace = prepare_task_workspace(spec, source_path=file, workspace=workspace)
+    summary = build_task_summary(spec, task_workspace)
+    write_task_summary(summary, task_workspace.summary_path)
+
+    typer.echo(f"Task created: {spec.name}")
+    typer.echo(f"Samples: {len(spec.samples)}")
+    typer.echo(f"Fields: {', '.join(spec.fields.keys())}")
+    typer.echo(f"Spec: {task_workspace.spec_path}")
+    typer.echo(f"Artifacts: {task_workspace.artifacts_dir}")
+    typer.echo(f"Summary: {task_workspace.summary_path}")
+    typer.echo("Next: spiderpilot antibot -f " + str(task_workspace.spec_path))
 
 
 @app.command("version")
