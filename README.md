@@ -50,6 +50,24 @@ social_media
 
 详细设计见：[`docs/generic_architecture.md`](docs/generic_architecture.md)
 
+
+## 核心工作流
+
+SpiderPilot 的完整工作流分为 8 步：
+
+```text
+1. Spec 输入
+2. AntiBot Precheck 反爬预检
+3. Probe 页面探测
+4. Reverse 自动逆向
+5. Extraction Plan 抽取计划
+6. Codegen 代码生成
+7. Run / Validate 运行校验
+8. Repair 自动修复
+```
+
+详细设计见：[`docs/workflow.md`](docs/workflow.md)
+
 ## 主要功能
 
 ### 1. 多 URL 样例输入
