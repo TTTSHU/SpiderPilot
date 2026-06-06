@@ -15,6 +15,8 @@ from spiderpilot.probe.diff import build_probe_diff
 from spiderpilot.probe.cloak_probe import run_cloak_probe
 from spiderpilot.reverse.locator import run_reverse
 from spiderpilot.ai_reverse import ai_reverse
+import uvicorn
+from spiderpilot.web.app import app as web_app
 from spiderpilot.ai_codegen import ai_generate
 from spiderpilot.ai_repair import ai_repair_plan
 from spiderpilot.planner.extraction_plan import build_extraction_plan
@@ -401,3 +403,9 @@ def repair(
 def version() -> None:
     """Print SpiderPilot version."""
     typer.echo("spiderpilot 0.1.0")
+
+
+@app.command("web")
+def web(host: str = "127.0.0.1", port: int = 8000):
+    """Launch SpiderPilot web UI."""
+    uvicorn.run(web_app, host=host, port=port, log_level="info")
