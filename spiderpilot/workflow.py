@@ -16,6 +16,7 @@ from spiderpilot.probe.diff import build_probe_diff
 from spiderpilot.antibot.strategy import build_antibot_strategy
 from spiderpilot.repair.auto_repair import build_repair_report
 from spiderpilot.reverse.locator import run_reverse
+from spiderpilot.ai_reverse import ai_reverse
 from spiderpilot.runner.local_runner import run_plan
 from spiderpilot.spec import build_task_summary, load_spec, prepare_task_workspace, write_task_summary
 from spiderpilot.validator.result_validator import validate_results
@@ -29,7 +30,7 @@ def create_task(spec_path: Path, workspace: Path = Path("workspace")) -> dict[st
     return {"spec": spec, "workspace": task_workspace, "summary": summary}
 
 
-def run_all(spec_path: Path, workspace: Path = Path("workspace"), timeout: int = 20, skip_network: bool = False, with_cloak: bool = False, cloak_wait: float = 5.0) -> dict[str, Any]:
+def run_all(spec_path: Path, workspace: Path = Path("workspace"), timeout: int = 20, skip_network: bool = False, with_cloak: bool = False, ai: bool = False, cloak_wait: float = 5.0) -> dict[str, Any]:
     """Run the full MVP workflow.
 
     If skip_network is True, existing raw.html artifacts are reused and antibot/probe

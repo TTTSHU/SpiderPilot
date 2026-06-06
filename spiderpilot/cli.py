@@ -14,6 +14,9 @@ from spiderpilot.probe.http_probe import run_http_probe
 from spiderpilot.probe.diff import build_probe_diff
 from spiderpilot.probe.cloak_probe import run_cloak_probe
 from spiderpilot.reverse.locator import run_reverse
+from spiderpilot.ai_reverse import ai_reverse
+from spiderpilot.ai_codegen import ai_generate
+from spiderpilot.ai_repair import ai_repair_plan
 from spiderpilot.planner.extraction_plan import build_extraction_plan
 from spiderpilot.generator.codegen import generate_spider
 from spiderpilot.discovery import run_discovery
@@ -73,6 +76,7 @@ def create(
     file: Path = typer.Option(..., "--file", "-f", help="Spec YAML file."),
     workspace: Path = typer.Option(Path("workspace"), "--workspace", "-w", help="Workspace root."),
     run_all_steps: bool = typer.Option(False, "--run-all", help="Run the full 8-step MVP workflow after creating the task."),
+    ai: bool = typer.Option(False, "--ai", help="Use LLM for reverse analysis instead of rules."),
     skip_network: bool = typer.Option(False, "--skip-network", help="Skip antibot/probe and reuse existing raw.html artifacts. Useful for offline fixtures."),
     timeout: int = typer.Option(20, "--timeout", help="HTTP timeout seconds for antibot/probe."),
     with_cloak: bool = typer.Option(False, "--with-cloak", help="Run CloakBrowser capture, probe diff, and antibot strategy inside --run-all."),
@@ -84,7 +88,7 @@ def create(
     create → antibot → probe → reverse → plan → generate → run → validate → repair.
     """
     if run_all_steps:
-        report = run_all(file, workspace=workspace, timeout=timeout, skip_network=skip_network, with_cloak=with_cloak, cloak_wait=cloak_wait)
+        report = run_all(file, workspace=workspace, timeout=timeout, skip_network=skip_network, with_cloak=with_cloak, ai=ai, cloak_wait=cloak_wait)
         typer.echo(f"Workflow task: {report['task']}")
         typer.echo(f"OK: {report['ok']}")
         typer.echo(f"Workflow report: {report['workflow_report_path']}")
@@ -144,6 +148,22 @@ def probe(
     typer.echo(f"Report: {report_path}")
 
 
+
+@app.command("reverse-ai")
+def reverse_ai(
+    file: Path = typer.Option(..., "--file", "-f", help="Spec YAML file."),
+    workspace: Path = typer.Option(Path("workspace"), "--workspace", "-w", help="Workspace root."),
+    model: str = typer.Option("deepseek-v4-flash", "--model", help="LLM model name."),
+) -> None:
+    """Use AI to analyze page artifacts and generate an Extraction Plan."""
+    plan = ai_reverse(file, workspace=workspace, model=model)
+    plan_path = workspace / "plans" / f"{plan['name']}.yaml"
+    typer.echo(f"AI source: {plan['source']['type']}")
+    typer.echo(f"AI confidence: {plan['source']['confidence']}")
+    typer.echo(f"Plan: {plan_path}")
+    for name, info in plan["fields"].items():
+        typer.echo(f"  {name}: {info.get('source')} {info.get('path')} ({info.get('confidence', 0):.2f})")
+
 @app.command("reverse")
 def reverse(
     file: Path = typer.Option(..., "--file", "-f", help="Spec YAML file."),
@@ -200,6 +220,17 @@ def cloak_probe(
     report_path = workspace / "artifacts" / report["task"] / "cloak_probe_report.yaml"
     typer.echo(f"CloakBrowser available: {report['cloakbrowser']['available']}")
     typer.echo(f"Report: {report_path}")
+
+
+@app.command("generate-ai")
+def generate_ai(
+    plan_file: Path = typer.Option(..., "--plan", "-p", help="Extraction Plan YAML file."),
+    workspace: Path = typer.Option(Path("workspace"), "--workspace", "-w", help="Workspace root."),
+    model: str = typer.Option("deepseek-v4-flash", "--model", help="LLM model name."),
+) -> None:
+    """Use AI to generate Scrapy spider code from an Extraction Plan."""
+    result = ai_generate(plan_file, workspace=workspace, model=model)
+    typer.echo(f"AI codegen: {result['path']}")
 
 
 @app.command("generate")
@@ -325,6 +356,20 @@ def discover(
     report = run_discovery(file, workspace=workspace, target_task=target_task, entity_type=entity_type, include=include)
     typer.echo(f"Discovery task: {report['task']}")
     typer.echo(f"Messages: {report['messages_total']}")
+
+
+@app.command("repair-ai")
+def repair_ai(
+    plan_file: Path = typer.Option(..., "--plan", "-p", help="Extraction Plan YAML file."),
+    validation_file: Path = typer.Option(..., "--validation", "-v", help="Validation YAML file."),
+    workspace: Path = typer.Option(Path("workspace"), "--workspace", "-w", help="Workspace root."),
+    model: str = typer.Option("deepseek-v4-flash", "--model", help="LLM model name."),
+) -> None:
+    """Use AI to repair a failing Extraction Plan based on validation errors."""
+    report = ai_repair_plan(plan_file, validation_file, workspace=workspace, model=model)
+    typer.echo(f"AI repair: {report['repaired']}")
+    if report['repaired']:
+        typer.echo(f"Fields fixed: {report['fields_fixed']}")
 
 
 @app.command("repair-loop")
