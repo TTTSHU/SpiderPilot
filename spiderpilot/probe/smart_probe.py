@@ -20,6 +20,13 @@ import yaml
 from spiderpilot.spec import SampleSpec, load_spec
 
 
+
+def _write_progress(artifact_dir: Path, step: str, detail: str = "") -> None:
+    """Write progress to file so Web UI can poll it."""
+    (artifact_dir / "probe_progress.txt").write_text(
+        f"{step}\n{detail}", encoding="utf-8"
+    )
+
 def smart_probe(
     spec_path: Path,
     workspace: Path,
@@ -68,6 +75,7 @@ def _probe_sample(
     # Step 1: CloakBrowser capture
     # ============================================================
     print("  CloakBrowser: launching...", flush=True)
+    _write_progress(sample_dir, "CloakBrowser: opening page...")
     browser = launch(headless=True, stealth_args=True)
     api_requests: list[dict[str, Any]] = []
     browser_cookies: list[dict[str, str]] = []
@@ -110,11 +118,13 @@ def _probe_sample(
         (cloak_dir / "cookies.json").write_text(json.dumps(browser_cookies, ensure_ascii=False, indent=2), encoding="utf-8")
 
         print(f"  CloakBrowser: html={len(rendered)}b api_requests={len(api_requests)} api_responses={len(list(cloak_responses_dir.glob('*.json')))} cookies={len(browser_cookies)}", flush=True)
+    _write_progress(sample_dir, f"CloakBrowser: captured {len(api_requests)} API requests")
     finally:
         browser.close()
 
     # ============================================================
     # Step 2: Replay with curl_cffi
+    _write_progress(sample_dir, "curl_cffi: replaying API requests...")
     # ============================================================
     curl_success = 0
     curl_responses: list[dict[str, Any]] = []
@@ -196,6 +206,7 @@ def _probe_sample(
     if curl_ok:
         probe_method = "curl_cffi"
         status_tag = "ok"
+        _write_progress(sample_dir, "Done: curl_cffi successful")
     else:
         # curl_cffi blocked: copy CloakBrowser responses to main dir
         import shutil
@@ -206,7 +217,9 @@ def _probe_sample(
                 curl_success += 1
         probe_method = "cloakbrowser"
         status_tag = "blocked_curl_replay_blocked" if api_requests else "no_api_requests"
+        _write_progress(sample_dir, "Done: using CloakBrowser data")
         print(f"  curl_cffi: BLOCKED -> using CloakBrowser responses ({curl_success} files)", flush=True)
+        _write_progress(sample_dir, f"curl_cffi blocked, using CloakBrowser data ({curl_success} responses)")
 
     return {
         "sample_id": sample.id,

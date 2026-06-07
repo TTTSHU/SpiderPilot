@@ -246,6 +246,23 @@ async def task_repair_ai(task_id: str):
         return redirect_with_error(task_id, err)
     return RedirectResponse(f"/task/{task_id}", status_code=303)
 
+
+@app.get("/task/{task_id}/progress")
+async def task_progress(task_id: str):
+    """Return current probe progress."""
+    import json
+    progress_path = WORKSPACE / "artifacts" / task_id / "probe_progress.txt"
+    result_paths = []
+    for sample_dir in sorted((WORKSPACE / "artifacts" / task_id).glob("s*")):
+        pp = sample_dir / "probe_progress.txt"
+        if pp.exists():
+            result_paths.append(pp.read_text(encoding="utf-8"))
+    if result_paths:
+        return {"progress": "\n".join(result_paths)}
+    if progress_path.exists():
+        return {"progress": progress_path.read_text(encoding="utf-8")}
+    return {"progress": ""}
+
 @app.post("/task/{task_id}/delete", response_class=RedirectResponse)
 async def task_delete(task_id: str):
     import shutil

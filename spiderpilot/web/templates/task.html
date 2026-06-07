@@ -68,6 +68,7 @@ pre{background:#0d1117;border:1px solid #30363d;border-radius:6px;padding:12px;o
     <h2>执行流水线</h2>
     <div class="pipeline">
       <form method="post" action="/task/{{ task_id }}/probe"><button class="btn {% if state.has_probe %}btn-primary{% endif %}">1. HTTP Probe</button></form>
+<form method="post" action="/task/{{ task_id }}/cloak-probe"><button class="btn" style="background:#8b5cf6;border-color:#8b5cf6;color:#fff">CloakBrowser</button></form>
       <form method="post" action="/task/{{ task_id }}/reverse-ai"><button class="btn btn-ai">2. AI 分析</button></form>
       <form method="post" action="/task/{{ task_id }}/generate-ai"><button class="btn btn-ai">3. AI 生成代码</button></form>
       <form method="post" action="/task/{{ task_id }}/run"><button class="btn {% if state.has_result %}btn-primary{% endif %}">4. 运行</button></form>
@@ -146,5 +147,33 @@ pre{background:#0d1117;border:1px solid #30363d;border-radius:6px;padding:12px;o
     <button class="btn btn-danger btn-sm">删除任务</button>
   </form>
 </div>
+
+<script>
+(function pollProgress() {
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', '/task/{{ task_id }}/progress');
+    xhr.onload = function() {
+        try {
+            var data = JSON.parse(xhr.responseText);
+            if (data.progress) {
+                var el = document.getElementById('progress-bar');
+                if (!el) {
+                    el = document.createElement('div');
+                    el.id = 'progress-bar';
+                    el.style.cssText = 'background:#1f6feb22;border:1px solid #1f6feb44;border-radius:8px;padding:10px 16px;margin-bottom:12px;color:#58a6ff;font-size:13px;font-family:monospace;white-space:pre-wrap';
+                    var container = document.querySelector('.container');
+                    if (container) container.insertBefore(el, container.firstChild);
+                }
+                el.textContent = data.progress;
+                if (data.progress.indexOf('Done:') === -1) {
+                    setTimeout(pollProgress, 1000);
+                }
+            }
+        } catch(e) {}
+    };
+    xhr.send();
+})();
+</script>
+
 </body>
 </html>
