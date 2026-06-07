@@ -44,17 +44,21 @@ def _extract_mvp_value(text: str, field_plan: dict[str, Any], sample_id: str | N
         value = _extract_from_evidence(text, sample_evidence, sample_dir=sample_dir)
         if value is not None:
             return value
-    return _extract_from_evidence(text, evidence, sample_dir=sample_dir)
+    return _extract_from_evidence(text, evidence if evidence else field_plan, sample_dir=sample_dir)
 
 
 def _extract_from_evidence(text: str, evidence: dict[str, Any], sample_dir: Path | None = None) -> Any:
-    path = evidence.get("path")
+    path = evidence.get("path") if isinstance(evidence, dict) else None
     if isinstance(path, str) and path.startswith("json_doc:"):
         value = _extract_json_doc_path(text, path)
         if value is not None:
             return value
     if isinstance(path, str) and path.startswith("json_response:") and sample_dir is not None:
         value = _extract_json_response_path(sample_dir, path)
+        if value is not None:
+            return value
+    if isinstance(path, str) and path.startswith("$") and sample_dir is not None:
+        value = _extract_bare_json_path_from_responses(sample_dir, path)
         if value is not None:
             return value
     source = evidence.get("source")
@@ -77,6 +81,21 @@ def _looks_like_css_selector(path: str | None) -> bool:
         return False
     return path.startswith("#") or "[" in path or "." in path or path.isalpha()
 
+
+
+def _extract_bare_json_path_from_responses(sample_dir, json_path):
+    """Try bare JSONPath against all response JSON files."""
+    for responses_dir in [sample_dir / "responses", sample_dir / "cloak" / "responses"]:
+        if not responses_dir.exists():
+            continue
+        for json_file in sorted(responses_dir.glob("*.json")):
+            data = load_json_file(json_file)
+            if data is None:
+                continue
+            value = get_json_path(data, json_path)
+            if value is not None:
+                return value
+    return None
 
 def _extract_json_response_path(sample_dir: Path, path: str) -> Any:
     # path format: json_response:{filename}:$.a.b[0]

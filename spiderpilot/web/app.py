@@ -127,6 +127,31 @@ def redirect_with_error(task_id: str, msg: str) -> RedirectResponse:
 @app.post("/task/{task_id}/probe", response_class=RedirectResponse)
 @app.post("/task/{task_id}/probe", response_class=RedirectResponse)
 async def task_probe(task_id: str):
+    """Smart probe: CloakBrowser capture, curl_cffi replay, auto fallback."""
+    from spiderpilot.probe.smart_probe import smart_probe
+    spec_path = task_spec_path(task_id)
+    try:
+        report = smart_probe(spec_path, WORKSPACE, wait_seconds=8)
+        sample = report["samples"][0] if report.get("samples") else {}
+        warn_path = WORKSPACE / "artifacts" / task_id / "probe_warnings.txt"
+        if sample.get("probe_method") == "cloakbrowser":
+            warn_path.write_text(
+                "Method: CloakBrowser (curl_cffi blocked)\n"
+                "API responses: " + str(sample.get("curl_success", 0)) + "\n"
+                "Tip: Run AI Analysis to extract fields from captured data.\n",
+                encoding="utf-8"
+            )
+        else:
+            warn_path.write_text(
+                "Method: curl_cffi (TLS impersonation)\n"
+                "API responses: " + str(sample.get("curl_success", 0)) + "\n",
+                encoding="utf-8"
+            )
+    except Exception as e:
+        import traceback
+        return redirect_with_error(task_id, "Probe failed:\n" + str(traceback.format_exc())[:500])
+    return RedirectResponse("/task/" + task_id, status_code=303)
+
     """Probe and detect anti-bot protection."""
     spec_path = task_spec_path(task_id)
     err = safe_action("probe", run_http_probe, spec_path, WORKSPACE)
@@ -170,56 +195,21 @@ async def task_probe(task_id: str):
                 warnings.append("Field '" + field + "' not in raw.html")
 
     # Save warnings to file
-    warn_path = artifact_root / "probe_warnings.txt"
-    if warnings:
-        if vendor_detected:
-            warnings.insert(0, "=== Anti-Bot Protection Detected: " + vendor_detected + " ===")
-            warnings.insert(1, "Try CloakBrowser capture to bypass this challenge.")
-            warnings.insert(2, "---")
-        warn_path.write_text("\n".join(warnings), encoding="utf-8")
-    elif warn_path.exists():
-        warn_path.unlink()
 
+@app.post("/task/{task_id}/cloak-probe", response_class=RedirectResponse)
+@app.post("/task/{task_id}/cloak-probe", response_class=RedirectResponse)
+@app.post("/task/{task_id}/cloak-probe", response_class=RedirectResponse)
+async def task_cloak_probe(task_id: str):
+    from spiderpilot.probe.cloak_cdp import capture_with_cloakbrowser
+    spec = load_spec(task_spec_path(task_id))
+    for sample in spec.samples:
+        sample_dir = WORKSPACE / "artifacts" / task_id / sample.id / "cloak"
+        try:
+            capture_with_cloakbrowser(sample.url, sample_dir, wait_seconds=15)
+        except Exception as e:
+            import traceback
+            return redirect_with_error(task_id, "CloakBrowser failed: " + str(traceback.format_exc())[:500])
     return RedirectResponse("/task/" + task_id, status_code=303)
-
-
-def _cookie_from_headers(sample_dir):
-    hdr_path = sample_dir / "headers.json"
-    if not hdr_path.exists():
-        return []
-    import json
-    try:
-        headers = json.loads(hdr_path.read_text(encoding="utf-8"))
-        cookies = []
-        for k, v in headers.items():
-            if k.lower() == "set-cookie":
-                cookies.append(v.split("=")[0].strip())
-        return cookies
-    except Exception:
-        return []
-
-def _cookie_from_headers(sample_dir):
-    """Extract cookie names from headers.json."""
-    hdr_path = sample_dir / "headers.json"
-    if not hdr_path.exists():
-        return []
-    import json
-    try:
-        headers = json.loads(hdr_path.read_text(encoding="utf-8"))
-        cookies = []
-        for k, v in headers.items():
-            if k.lower() == "set-cookie":
-                cookies.append(v.split("=")[0].strip())
-        return cookies
-    except Exception:
-        return []
-
-@app.post("/task/{task_id}/reverse-ai", response_class=RedirectResponse)
-async def task_reverse_ai(task_id: str):
-    err = safe_action("reverse-ai", ai_reverse, task_spec_path(task_id), WORKSPACE)
-    if err:
-        return redirect_with_error(task_id, err)
-    return RedirectResponse(f"/task/{task_id}", status_code=303)
 
 @app.post("/task/{task_id}/generate-ai", response_class=RedirectResponse)
 async def task_generate_ai(task_id: str):

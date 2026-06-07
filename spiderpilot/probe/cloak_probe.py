@@ -36,17 +36,17 @@ class CloakBrowserStatus:
 
 
 def check_cloakbrowser() -> CloakBrowserStatus:
-    exe = shutil.which("cloakbrowser")
-    if not exe:
-        return CloakBrowserStatus(False, None, error="cloakbrowser executable not found")
     try:
-        proc = subprocess.run([exe, "info"], capture_output=True, text=True, timeout=20)
-        return CloakBrowserStatus(proc.returncode == 0, exe, info=proc.stdout.strip(), error=proc.stderr.strip() or None)
-    except Exception as exc:  # pragma: no cover - external boundary
-        return CloakBrowserStatus(False, exe, error=f"{type(exc).__name__}: {exc}")
+        from cloakbrowser import launch  # noqa: F401
+        exe = shutil.which("cloakbrowser")
+        return CloakBrowserStatus(True, exe or "cloakbrowser (imported)", info="Module import successful")
+    except ImportError:
+        return CloakBrowserStatus(False, None, error="cloakbrowser Python module not installed")
+    except Exception as exc:
+        return CloakBrowserStatus(False, None, error=f"{type(exc).__name__}: {exc}")
 
 
-def run_cloak_probe(spec_path: Path, workspace: Path = Path("workspace"), capture: bool = False, wait_seconds: float = 5.0, signature_hook: bool = False) -> dict[str, Any]:
+def run_cloak_probe(spec_path: Path, workspace: Path = Path("workspace"), capture: bool = False, wait_seconds: float = 15.0, signature_hook: bool = False, headless: bool = True, stealth: bool = True) -> dict[str, Any]:
     spec = load_spec(spec_path)
     status = check_cloakbrowser()
     artifact_root = workspace / "artifacts" / spec.name
@@ -70,7 +70,7 @@ def run_cloak_probe(spec_path: Path, workspace: Path = Path("workspace"), captur
         }
         if capture and status.available:
             try:
-                placeholder["capture"] = capture_with_cloakbrowser(sample.url, sample_dir, wait_seconds=wait_seconds, signature_hook=signature_hook)
+                placeholder["capture"] = capture_with_cloakbrowser(sample.url, sample_dir, wait_seconds=wait_seconds)
                 placeholder["status"] = "captured"
             except Exception as exc:
                 placeholder["status"] = "capture_failed"
