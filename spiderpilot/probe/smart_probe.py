@@ -157,8 +157,10 @@ def _probe_sample(
                 body = resp.text
                 is_json = body.strip().startswith("{")
                 # Check if blocked: HTML response means anti-bot
-                is_html = body.strip().lower().startswith("<!doctype") or body.strip().lower().startswith("<html")
-                blocked = is_html or resp.status_code in (403, 503)
+                body_lower = body.lower()[:500] if body else ""
+                is_html = body_lower.startswith("<!doctype") or body_lower.startswith("<html")
+                is_challenge = any(w in body_lower for w in ('challenge-platform', 'captcha', 'cf_chl'))
+                blocked = ((is_html and not is_json) or resp.status_code in (403, 503)) and not is_challenge
 
                 if not blocked:
                     # Save to main responses dir
@@ -189,7 +191,8 @@ def _probe_sample(
     # ============================================================
     # Step 3: Determine result
     # ============================================================
-    curl_ok = curl_success > 0
+    # Only consider curl_cffi successful if most replayed requests succeeded
+    curl_ok = curl_success > 0 and (len(api_requests) == 0 or curl_success >= len(api_requests) * 0.5)
     if curl_ok:
         probe_method = "curl_cffi"
         status_tag = "ok"
