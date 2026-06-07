@@ -123,78 +123,48 @@ def redirect_with_error(task_id: str, msg: str) -> RedirectResponse:
     return RedirectResponse(f"/task/{task_id}?error={msg}", status_code=303)
 
 @app.post("/task/{task_id}/probe", response_class=RedirectResponse)
-@app.post("/task/{task_id}/probe", response_class=RedirectResponse)
-@app.post("/task/{task_id}/probe", response_class=RedirectResponse)
-@app.post("/task/{task_id}/probe", response_class=RedirectResponse)
 async def task_probe(task_id: str):
-    """Smart probe: CloakBrowser capture, curl_cffi replay, auto fallback."""
+    """Smart probe: run in background thread to avoid event loop conflicts."""
+    import concurrent.futures
     from spiderpilot.probe.smart_probe import smart_probe
     spec_path = task_spec_path(task_id)
-    try:
+
+    def run():
         report = smart_probe(spec_path, WORKSPACE, wait_seconds=8)
         sample = report["samples"][0] if report.get("samples") else {}
         warn_path = WORKSPACE / "artifacts" / task_id / "probe_warnings.txt"
         if sample.get("probe_method") == "cloakbrowser":
             warn_path.write_text(
-                "Method: CloakBrowser (curl_cffi blocked)\n"
-                "API responses: " + str(sample.get("curl_success", 0)) + "\n"
-                "Tip: Run AI Analysis to extract fields from captured data.\n",
+                "Method: CloakBrowser (curl_cffi blocked)
+"
+                "API responses: " + str(sample.get("curl_success", 0)) + "
+"
+                "Tip: Run AI Analysis to extract fields from captured data.
+",
                 encoding="utf-8"
             )
         else:
             warn_path.write_text(
-                "Method: curl_cffi (TLS impersonation)\n"
-                "API responses: " + str(sample.get("curl_success", 0)) + "\n",
+                "Method: curl_cffi (TLS impersonation)
+"
+                "API responses: " + str(sample.get("curl_success", 0)) + "
+",
                 encoding="utf-8"
             )
+        return report
+
+    pool = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+    try:
+        future = pool.submit(run)
+        future.result(timeout=120)
     except Exception as e:
         import traceback
-        return redirect_with_error(task_id, "Probe failed:\n" + str(traceback.format_exc())[:500])
+        return redirect_with_error(task_id, "Probe failed:
+" + str(traceback.format_exc())[:1000])
+    finally:
+        pool.shutdown(wait=False)
     return RedirectResponse("/task/" + task_id, status_code=303)
 
-    """Probe and detect anti-bot protection."""
-    spec_path = task_spec_path(task_id)
-    err = safe_action("probe", run_http_probe, spec_path, WORKSPACE)
-    if err:
-        return redirect_with_error(task_id, err)
-
-    spec = load_spec(spec_path)
-    artifact_root = WORKSPACE / "artifacts" / task_id
-    warnings = []
-    vendor_detected = None
-
-    for sample in spec.samples:
-        raw_path = artifact_root / sample.id / "raw.html"
-        if not raw_path.exists():
-            continue
-        html = raw_path.read_text(encoding="utf-8", errors="replace").lower()
-
-        # Anti-bot vendor detection
-        from spiderpilot.antibot.precheck import detect_vendor, BLOCK_KEYWORDS
-        set_cookie = _cookie_from_headers(artifact_root / sample.id)
-        vendor, confidence, hits = detect_vendor(html, set_cookie)
-        if vendor:
-            vendor_detected = vendor
-            warnings.append("Anti-bot: " + vendor + " (confidence=" + str(confidence) + ")")
-            warnings.append("  Evidence: " + ", ".join(hits[:5]))
-
-        # Block page
-        block_hits = [k for k in BLOCK_KEYWORDS if k in html]
-        if block_hits:
-            warnings.append("Block keywords: " + ", ".join(block_hits))
-
-        # Field check
-        for field, expected in sample.expected.items():
-            found = False
-            if expected.equals and expected.equals.lower() in html:
-                found = True
-            if expected.contains:
-                if all(v.lower() in html for v in expected.contains):
-                    found = True
-            if not found:
-                warnings.append("Field '" + field + "' not in raw.html")
-
-    # Save warnings to file
 
 @app.post("/task/{task_id}/cloak-probe", response_class=RedirectResponse)
 @app.post("/task/{task_id}/cloak-probe", response_class=RedirectResponse)
