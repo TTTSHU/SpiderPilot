@@ -1,17 +1,14 @@
 """SpiderPilot web UI with FastAPI."""
 
-from __future__ import annotations
-
 import json
-import uuid
+import traceback
 from pathlib import Path
 from typing import Any
 
 import yaml
 from fastapi import FastAPI, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
-from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
+import jinja2
 
 from spiderpilot.ai_codegen import ai_generate
 from spiderpilot.ai_repair import ai_repair_plan
@@ -22,16 +19,24 @@ from spiderpilot.spec import load_spec
 from spiderpilot.validator.result_validator import validate_results
 
 app = FastAPI(title="SpiderPilot")
-
 BASE_DIR = Path(__file__).resolve().parent
-templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
-
 WORKSPACE = Path("workspace")
 
+_jinja_env = jinja2.Environment(loader=jinja2.FileSystemLoader(str(BASE_DIR / "templates")))
 
-def _task_dir(name: str) -> Path:
-    return WORKSPACE / "specs"
+def render(template_file: str, **ctx) -> HTMLResponse:
+    return HTMLResponse(content=_jinja_env.get_template(template_file).render(**ctx))
 
+def safe_action(label: str, fn, *args, **kwargs) -> str | None:
+    """Call fn, return error string or None on success."""
+    try:
+        fn(*args, **kwargs)
+    except Exception:
+        return f"{label} failed:\n{traceback.format_exc()}"
+    return None
+
+def task_spec_path(task_id: str) -> Path:
+    return WORKSPACE / "specs" / f"{task_id}.yaml"
 
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
@@ -42,15 +47,13 @@ async def index(request: Request):
             try:
                 spec = yaml.safe_load(f.read_text(encoding="utf-8"))
                 tasks.append({
-                    "name": spec.get("name", f.stem),
+                    "task_id": spec.get("name", f.stem),
                     "samples": len(spec.get("samples", [])),
                     "fields": list(spec.get("fields", {}).keys()),
-                    "path": str(f),
                 })
             except Exception:
-                tasks.append({"name": f.stem, "samples": 0, "fields": [], "path": str(f)})
-    return templates.TemplateResponse("index.html", {"request": request, "tasks": tasks})
-
+                tasks.append({"task_id": f.stem, "samples": 0, "fields": []})
+    return render("index.html", request=request, tasks=tasks)
 
 @app.post("/create", response_class=RedirectResponse)
 async def create_task(
@@ -64,7 +67,7 @@ async def create_task(
         return RedirectResponse("/", status_code=303)
     fields = json.loads(fields_data) if fields_data else []
     samples = []
-    for i, line in enumerate(urllist := url_list):
+    for i, line in enumerate(url_list):
         parts = line.split("|")
         url = parts[0].strip()
         sample_id = f"s{i+1}"
@@ -78,125 +81,214 @@ async def create_task(
     for f in fields:
         field_defs[f["name"]] = {"type": f.get("type", "string"), "required": f.get("required", True)}
     if not field_defs:
-        all_keys = set()
+        all_keys: set = set()
         for s in samples:
             all_keys.update(s["expected"].keys())
         for k in sorted(all_keys):
             field_defs[k] = {"type": "string", "required": True}
-
     spec = {"version": 1, "name": name, "target_type": "detail", "samples": samples, "fields": field_defs}
-    specs_dir = _task_dir(name)
-    specs_dir.mkdir(parents=True, exist_ok=True)
-    path = specs_dir / f"{name}.yaml"
-    path.write_text(yaml.safe_dump(spec, allow_unicode=True, sort_keys=False), encoding="utf-8")
+    task_spec_path(name).parent.mkdir(parents=True, exist_ok=True)
+    task_spec_path(name).write_text(yaml.safe_dump(spec, allow_unicode=True, sort_keys=False), encoding="utf-8")
     return RedirectResponse(f"/task/{name}", status_code=303)
 
-
-@app.get("/task/{name}", response_class=HTMLResponse)
-async def task_detail(request: Request, name: str):
-    spec_path = WORKSPACE / "specs" / f"{name}.yaml"
+@app.get("/task/{task_id}", response_class=HTMLResponse)
+async def task_detail(request: Request, task_id: str):
+    spec_path = task_spec_path(task_id)
     if not spec_path.exists():
         return HTMLResponse("Task not found", status_code=404)
     spec = load_spec(spec_path)
-
-    # Collect run state
-    state = {}
-    artifact_root = WORKSPACE / "artifacts" / name
-    plan_path = WORKSPACE / "plans" / f"{name}.yaml"
-    result_path = WORKSPACE / "results" / f"{name}.json"
-    validation_path = WORKSPACE / "results" / f"{name}_validation.yaml"
-    gen_dir = WORKSPACE / "generated_spiders"
-    gen_files = sorted(gen_dir.glob(f"{name}*")) if gen_dir.exists() else []
-
-    state["has_probe"] = (artifact_root / "probe_report.yaml").exists()
-    state["has_plan"] = plan_path.exists()
-    state["has_result"] = result_path.exists()
-    state["has_validation"] = validation_path.exists()
-    state["has_codegen"] = bool(gen_files)
-
+    state: dict[str, Any] = {
+        "has_probe": (WORKSPACE / "artifacts" / task_id / "probe_report.yaml").exists(),
+        "has_plan": (WORKSPACE / "plans" / f"{task_id}.yaml").exists(),
+        "has_result": (WORKSPACE / "results" / f"{task_id}.json").exists(),
+        "has_validation": (WORKSPACE / "results" / f"{task_id}_validation.yaml").exists(),
+    }
     if state["has_plan"]:
-        plan = yaml.safe_load(plan_path.read_text(encoding="utf-8"))
-        state["plan_source"] = plan.get("source", {}).get("type")
+        plan = yaml.safe_load((WORKSPACE / "plans" / f"{task_id}.yaml").read_text(encoding="utf-8"))
+        state["plan_source"] = plan.get("source", {}).get("type", "?")
         state["plan_fields"] = plan.get("fields", {})
     if state["has_validation"]:
-        val = yaml.safe_load(validation_path.read_text(encoding="utf-8"))
+        val = yaml.safe_load((WORKSPACE / "results" / f"{task_id}_validation.yaml").read_text(encoding="utf-8"))
         state["validation_ok"] = val.get("ok")
-        state["hit_rate"] = val.get("field_hit_rate")
+        state["hit_rate"] = val.get("field_hit_rate", 0)
     if state["has_result"]:
-        result = json.loads(result_path.read_text(encoding="utf-8"))
+        result = json.loads((WORKSPACE / "results" / f"{task_id}.json").read_text(encoding="utf-8"))
         state["result_preview"] = json.dumps(result[:3], ensure_ascii=False, indent=2)
+    warn_path = WORKSPACE / "artifacts" / task_id / "probe_warnings.txt"
+    state["probe_warnings"] = warn_path.read_text(encoding="utf-8") if warn_path.exists() else None
+    return render("task.html", request=request, task_id=task_id, spec=spec, state=state, error=request.query_params.get("error"))
 
-    return templates.TemplateResponse("task.html", {
-        "request": request,
-        "spec": spec,
-        "name": name,
-        "state": state,
-        "spec_path": str(spec_path),
-        "plan_path": str(plan_path),
-        "result_path": str(result_path),
-        "validation_path": str(validation_path),
-    })
+    warn_path = WORKSPACE / "artifacts" / task_id / "probe_warnings.txt"
+def redirect_with_error(task_id: str, msg: str) -> RedirectResponse:
+    return RedirectResponse(f"/task/{task_id}?error={msg}", status_code=303)
+
+@app.post("/task/{task_id}/probe", response_class=RedirectResponse)
+@app.post("/task/{task_id}/probe", response_class=RedirectResponse)
+@app.post("/task/{task_id}/probe", response_class=RedirectResponse)
+@app.post("/task/{task_id}/probe", response_class=RedirectResponse)
+async def task_probe(task_id: str):
+    """Probe and detect anti-bot protection."""
+    spec_path = task_spec_path(task_id)
+    err = safe_action("probe", run_http_probe, spec_path, WORKSPACE)
+    if err:
+        return redirect_with_error(task_id, err)
+
+    spec = load_spec(spec_path)
+    artifact_root = WORKSPACE / "artifacts" / task_id
+    warnings = []
+    vendor_detected = None
+
+    for sample in spec.samples:
+        raw_path = artifact_root / sample.id / "raw.html"
+        if not raw_path.exists():
+            continue
+        html = raw_path.read_text(encoding="utf-8", errors="replace").lower()
+
+        # Anti-bot vendor detection
+        from spiderpilot.antibot.precheck import detect_vendor, BLOCK_KEYWORDS
+        set_cookie = _cookie_from_headers(artifact_root / sample.id)
+        vendor, confidence, hits = detect_vendor(html, set_cookie)
+        if vendor:
+            vendor_detected = vendor
+            warnings.append("Anti-bot: " + vendor + " (confidence=" + str(confidence) + ")")
+            warnings.append("  Evidence: " + ", ".join(hits[:5]))
+
+        # Block page
+        block_hits = [k for k in BLOCK_KEYWORDS if k in html]
+        if block_hits:
+            warnings.append("Block keywords: " + ", ".join(block_hits))
+
+        # Field check
+        for field, expected in sample.expected.items():
+            found = False
+            if expected.equals and expected.equals.lower() in html:
+                found = True
+            if expected.contains:
+                if all(v.lower() in html for v in expected.contains):
+                    found = True
+            if not found:
+                warnings.append("Field '" + field + "' not in raw.html")
+
+    # Save warnings to file
+    warn_path = artifact_root / "probe_warnings.txt"
+    if warnings:
+        if vendor_detected:
+            warnings.insert(0, "=== Anti-Bot Protection Detected: " + vendor_detected + " ===")
+            warnings.insert(1, "Try CloakBrowser capture to bypass this challenge.")
+            warnings.insert(2, "---")
+        warn_path.write_text("\n".join(warnings), encoding="utf-8")
+    elif warn_path.exists():
+        warn_path.unlink()
+
+    return RedirectResponse("/task/" + task_id, status_code=303)
 
 
-@app.post("/task/{name}/probe", response_class=RedirectResponse)
-async def task_probe(name: str):
-    spec_path = WORKSPACE / "specs" / f"{name}.yaml"
-    run_http_probe(spec_path, workspace=WORKSPACE)
-    return RedirectResponse(f"/task/{name}", status_code=303)
+def _cookie_from_headers(sample_dir):
+    hdr_path = sample_dir / "headers.json"
+    if not hdr_path.exists():
+        return []
+    import json
+    try:
+        headers = json.loads(hdr_path.read_text(encoding="utf-8"))
+        cookies = []
+        for k, v in headers.items():
+            if k.lower() == "set-cookie":
+                cookies.append(v.split("=")[0].strip())
+        return cookies
+    except Exception:
+        return []
 
+def _cookie_from_headers(sample_dir):
+    """Extract cookie names from headers.json."""
+    hdr_path = sample_dir / "headers.json"
+    if not hdr_path.exists():
+        return []
+    import json
+    try:
+        headers = json.loads(hdr_path.read_text(encoding="utf-8"))
+        cookies = []
+        for k, v in headers.items():
+            if k.lower() == "set-cookie":
+                cookies.append(v.split("=")[0].strip())
+        return cookies
+    except Exception:
+        return []
 
-@app.post("/task/{name}/reverse-ai", response_class=RedirectResponse)
-async def task_reverse_ai(name: str):
-    spec_path = WORKSPACE / "specs" / f"{name}.yaml"
-    ai_reverse(spec_path, workspace=WORKSPACE)
-    return RedirectResponse(f"/task/{name}", status_code=303)
+@app.post("/task/{task_id}/reverse-ai", response_class=RedirectResponse)
+async def task_reverse_ai(task_id: str):
+    err = safe_action("reverse-ai", ai_reverse, task_spec_path(task_id), WORKSPACE)
+    if err:
+        return redirect_with_error(task_id, err)
+    return RedirectResponse(f"/task/{task_id}", status_code=303)
 
+@app.post("/task/{task_id}/generate-ai", response_class=RedirectResponse)
+async def task_generate_ai(task_id: str):
+    plan_path = WORKSPACE / "plans" / f"{task_id}.yaml"
+    err = safe_action("generate-ai", ai_generate, plan_path, WORKSPACE)
+    if err:
+        return redirect_with_error(task_id, err)
+    return RedirectResponse(f"/task/{task_id}", status_code=303)
 
-@app.post("/task/{name}/generate-ai", response_class=RedirectResponse)
-async def task_generate_ai(name: str):
-    plan_path = WORKSPACE / "plans" / f"{name}.yaml"
-    ai_generate(plan_path, workspace=WORKSPACE)
-    return RedirectResponse(f"/task/{name}", status_code=303)
+@app.post("/task/{task_id}/run", response_class=RedirectResponse)
+async def task_run(task_id: str):
+    spec_path = task_spec_path(task_id)
+    plan_path = WORKSPACE / "plans" / f"{task_id}.yaml"
+    err = safe_action("run", run_plan, spec_path, plan_path, WORKSPACE)
+    if err:
+        return redirect_with_error(task_id, err)
+    return RedirectResponse(f"/task/{task_id}", status_code=303)
 
+@app.post("/task/{task_id}/validate", response_class=RedirectResponse)
+async def task_validate(task_id: str):
+    spec_path = task_spec_path(task_id)
+    result_path = WORKSPACE / "results" / f"{task_id}.json"
+    err = safe_action("validate", validate_results, spec_path, result_path, WORKSPACE)
+    if err:
+        return redirect_with_error(task_id, err)
+    return RedirectResponse(f"/task/{task_id}", status_code=303)
 
-@app.post("/task/{name}/run", response_class=RedirectResponse)
-async def task_run(name: str):
-    spec_path = WORKSPACE / "specs" / f"{name}.yaml"
-    plan_path = WORKSPACE / "plans" / f"{name}.yaml"
-    run_plan(spec_path, plan_path, workspace=WORKSPACE)
-    return RedirectResponse(f"/task/{name}", status_code=303)
+@app.post("/task/{task_id}/repair-ai", response_class=RedirectResponse)
+async def task_repair_ai(task_id: str):
+    plan_path = WORKSPACE / "plans" / f"{task_id}.yaml"
+    validation_path = WORKSPACE / "results" / f"{task_id}_validation.yaml"
+    err = safe_action("repair-ai", ai_repair_plan, plan_path, validation_path, WORKSPACE)
+    if err:
+        return redirect_with_error(task_id, err)
+    return RedirectResponse(f"/task/{task_id}", status_code=303)
 
-
-@app.post("/task/{name}/validate", response_class=RedirectResponse)
-async def task_validate(name: str):
-    spec_path = WORKSPACE / "specs" / f"{name}.yaml"
-    result_path = WORKSPACE / "results" / f"{name}.json"
-    validate_results(spec_path, result_path, workspace=WORKSPACE)
-    return RedirectResponse(f"/task/{name}", status_code=303)
-
-
-@app.post("/task/{name}/repair-ai", response_class=RedirectResponse)
-async def task_repair_ai(name: str):
-    plan_path = WORKSPACE / "plans" / f"{name}.yaml"
-    validation_path = WORKSPACE / "results" / f"{name}_validation.yaml"
-    ai_repair_plan(plan_path, validation_path, workspace=WORKSPACE)
-    return RedirectResponse(f"/task/{name}", status_code=303)
-
-
-@app.post("/task/{name}/delete", response_class=RedirectResponse)
-async def task_delete(name: str):
+@app.post("/task/{task_id}/delete", response_class=RedirectResponse)
+async def task_delete(task_id: str):
     import shutil
-    for d in [
-        WORKSPACE / "specs" / f"{name}.yaml",
-        WORKSPACE / "artifacts" / name,
-        WORKSPACE / "plans" / f"{name}.yaml",
-        WORKSPACE / "results" / f"{name}.json",
-        WORKSPACE / "results" / f"{name}_validation.yaml",
-        WORKSPACE / "results" / f"{name}_repair.yaml",
-        WORKSPACE / "signatures" / name,
+    for p in [
+        task_spec_path(task_id),
+        WORKSPACE / "artifacts" / task_id,
+        WORKSPACE / "plans" / f"{task_id}.yaml",
+        WORKSPACE / "results" / f"{task_id}.json",
+        WORKSPACE / "results" / f"{task_id}_validation.yaml",
+        WORKSPACE / "signatures" / task_id,
     ]:
-        if d.is_file():
-            d.unlink(missing_ok=True)
-        elif d.is_dir():
-            shutil.rmtree(d, ignore_errors=True)
+        if p.is_file():
+            p.unlink(missing_ok=True)
+        elif p.is_dir():
+            shutil.rmtree(p, ignore_errors=True)
     return RedirectResponse("/", status_code=303)
+
+# ============================================================
+# Settings page
+# ============================================================
+
+@app.get("/settings", response_class=HTMLResponse)
+async def settings_page(request: Request):
+    from spiderpilot.config_store import load_config
+    cfg = load_config()
+    return render("settings.html", request=request, cfg=cfg)
+
+@app.post("/settings", response_class=RedirectResponse)
+async def settings_save(
+    api_key: str = Form(""),
+    api_base: str = Form("https://api.deepseek.com/v1"),
+    model: str = Form("deepseek-v4-flash"),
+):
+    from spiderpilot.config_store import save_config
+    save_config({"api_key": api_key, "api_base": api_base, "model": model})
+    return RedirectResponse("/settings", status_code=303)

@@ -27,12 +27,12 @@ DEFAULT_HEADERS = {
 
 VENDOR_RULES = {
     "datadome": ["datadome", "ddsession", "ddoriginalreferrer", "geo.captcha-delivery.com"],
-    "cloudflare": ["cf_clearance", "__cf_bm", "cf_chl", "turnstile", "cloudflare"],
+    "cloudflare": ["cf_chl", "cf_clearance", "__cf_bm", "turnstile", "challenge-platform", "cloudflare"],
     "akamai": ["_abck", "bm_sz", "ak_bmsc", "akamai", "sensor_data"],
     "perimeterx": ["_px", "_px3", "_pxvid", "px-captcha", "perimeterx"],
     "kasada": ["x-kpsdk", "kpsdk", "ips.js", "kasada"],
     "imperva": ["incap_ses", "visid_incap", "_incapsula", "imperva"],
-    "shape_f5": ["f5_cspm", "shape", "shapesecurity", "ts", "big-ip"],
+    "shape_f5": ["f5_cspm", "shapesecurity", "big-ip"],
     "ruishu": ["412", "fssbbil1ugzbn7n", "nfbc sins2oyws".replace(" ", ""), "sdenv"],
     "bytedance": ["webmssdk", "byted_acrawler", "x-bogus", "a_bogus"],
 }

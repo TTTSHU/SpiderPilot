@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>{{ name }} - SpiderPilot</title>
+<title>{{ task_id }} - SpiderPilot</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:"SF Pro Display","Segoe UI",system-ui,-apple-system,sans-serif;background:#0d1117;color:#c9d1d9;min-height:100vh}
@@ -44,24 +44,36 @@ pre{background:#0d1117;border:1px solid #30363d;border-radius:6px;padding:12px;o
 </style>
 </head>
 <body>
-<div class="header">
+<div class="header"><a href="/" style="color:#8b949e;text-decoration:none;font-size:13px;margin-right:8px">Home</a><a href="/settings" style="color:#8b949e;text-decoration:none;font-size:13px;margin-right:12px">Settings</a>
   <a href="/">← 返回</a>
-  <h1>{{ name }}</h1>
+  <h1>{{ task_id }}</h1>
   <span style="color:#8b949e;font-size:13px">{{ spec.samples|length }} 个样本 · {{ spec.fields|length }} 个字段</span>
 </div>
 <div class="container">
+{% if state.has_probe and state.probe_warnings %}
+<div style="background:#da363322;border:1px solid #f85149;border-radius:8px;padding:14px 18px;margin-bottom:16px">
+<div style="color:#f85149;font-weight:600;font-size:14px;margin-bottom:8px">{{ state.probe_warnings.split('\n')[0] if '===' in state.probe_warnings.split('\n')[0] else 'Anti-Bot Warning' }}</div>
+<div style="color:#c9d1d9;font-size:13px;white-space:pre-wrap;font-family:monospace">{{ state.probe_warnings }}</div>
+</div>
+{% endif %}
+{% if request.query_params.get('warning') %}
+<div style="background:#da363322;border:1px solid #da363344;border-radius:8px;padding:14px 18px;margin-bottom:16px;color:#f85149;font-size:13px;white-space:pre-wrap">{{ request.query_params.get('warning') }}</div>
+{% endif %}
+{% if request.query_params.get('error') %}
+<div style="background:#da363322;border:1px solid #da363344;border-radius:8px;padding:14px 18px;margin-bottom:16px;color:#f85149;font-size:13px;white-space:pre-wrap">{{ request.query_params.get('error') }}</div>
+{% endif %}
 
   <!-- Pipeline -->
   <div class="card">
     <h2>执行流水线</h2>
     <div class="pipeline">
-      <form method="post" action="/task/{{ name }}/probe"><button class="btn {% if state.has_probe %}btn-primary{% endif %}">1. 探测页面</button></form>
-      <form method="post" action="/task/{{ name }}/reverse-ai"><button class="btn btn-ai">2. AI 分析</button></form>
-      <form method="post" action="/task/{{ name }}/generate-ai"><button class="btn btn-ai">3. AI 生成代码</button></form>
-      <form method="post" action="/task/{{ name }}/run"><button class="btn {% if state.has_result %}btn-primary{% endif %}">4. 运行</button></form>
-      <form method="post" action="/task/{{ name }}/validate"><button class="btn">5. 验证</button></form>
+      <form method="post" action="/task/{{ task_id }}/probe"><button class="btn {% if state.has_probe %}btn-primary{% endif %}">1. HTTP Probe</button></form>
+      <form method="post" action="/task/{{ task_id }}/reverse-ai"><button class="btn btn-ai">2. AI 分析</button></form>
+      <form method="post" action="/task/{{ task_id }}/generate-ai"><button class="btn btn-ai">3. AI 生成代码</button></form>
+      <form method="post" action="/task/{{ task_id }}/run"><button class="btn {% if state.has_result %}btn-primary{% endif %}">4. 运行</button></form>
+      <form method="post" action="/task/{{ task_id }}/validate"><button class="btn">5. 验证</button></form>
       {% if state.has_validation and not state.validation_ok %}
-      <form method="post" action="/task/{{ name }}/repair-ai"><button class="btn btn-ai">6. AI 修复</button></form>
+      <form method="post" action="/task/{{ task_id }}/repair-ai"><button class="btn btn-ai">6. AI 修复</button></form>
       {% endif %}
     </div>
     <div class="status-row">
@@ -129,7 +141,7 @@ pre{background:#0d1117;border:1px solid #30363d;border-radius:6px;padding:12px;o
   </div>
 
   <!-- Delete -->
-  <form method="post" action="/task/{{ name }}/delete" onsubmit="return confirm('确认删除任务 {{ name }}？')" style="margin-bottom:32px">
+  <form method="post" action="/task/{{ task_id }}/delete" onsubmit="return confirm('确认删除任务 {{ task_id }}？')" style="margin-bottom:32px">
     <input type="hidden" name="_method" value="delete">
     <button class="btn btn-danger btn-sm">删除任务</button>
   </form>

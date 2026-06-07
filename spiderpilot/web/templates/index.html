@@ -46,7 +46,7 @@ pre{background:#0d1117;border:1px solid #30363d;border-radius:6px;padding:12px;o
 </style>
 </head>
 <body>
-<div class="header">
+<div class="header"><a href="/settings" style="color:#8b949e;text-decoration:none;font-size:13px;margin-right:12px">Settings</a>
   <h1>SpiderPilot</h1>
   <span>AI 自动逆向爬虫框架</span>
 </div>
@@ -106,8 +106,8 @@ pre{background:#0d1117;border:1px solid #30363d;border-radius:6px;padding:12px;o
     {% if tasks %}
     <div class="task-list">
     {% for t in tasks %}
-      <a href="/task/{{ t.name }}" class="task-item">
-        <span class="name">{{ t.name }}</span>
+      <a href="/task/{{ t.task_id }}" class="task-item">
+        <span class="name">{{ t.task_id }}</span>
         <span class="meta">{{ t.samples }} 个样本 · {{ t.fields|length }} 个字段</span>
       </a>
     {% endfor %}
