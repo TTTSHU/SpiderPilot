@@ -124,51 +124,15 @@ def redirect_with_error(task_id: str, msg: str) -> RedirectResponse:
 
 @app.post("/task/{task_id}/probe", response_class=RedirectResponse)
 async def task_probe(task_id: str):
-    """Smart probe: run in background thread to avoid event loop conflicts."""
-    import concurrent.futures
+    """Smart probe: CloakBrowser capture, curl_cffi replay."""
     from spiderpilot.probe.smart_probe import smart_probe
     spec_path = task_spec_path(task_id)
-
-    def run():
-        report = smart_probe(spec_path, WORKSPACE, wait_seconds=8)
-        sample = report["samples"][0] if report.get("samples") else {}
-        warn_path = WORKSPACE / "artifacts" / task_id / "probe_warnings.txt"
-        if sample.get("probe_method") == "cloakbrowser":
-            warn_path.write_text(
-                "Method: CloakBrowser (curl_cffi blocked)
-"
-                "API responses: " + str(sample.get("curl_success", 0)) + "
-"
-                "Tip: Run AI Analysis to extract fields from captured data.
-",
-                encoding="utf-8"
-            )
-        else:
-            warn_path.write_text(
-                "Method: curl_cffi (TLS impersonation)
-"
-                "API responses: " + str(sample.get("curl_success", 0)) + "
-",
-                encoding="utf-8"
-            )
-        return report
-
-    pool = concurrent.futures.ThreadPoolExecutor(max_workers=1)
     try:
-        future = pool.submit(run)
-        future.result(timeout=120)
+        report = smart_probe(spec_path, WORKSPACE, wait_seconds=8)
     except Exception as e:
         import traceback
-        return redirect_with_error(task_id, "Probe failed:
-" + str(traceback.format_exc())[:1000])
-    finally:
-        pool.shutdown(wait=False)
+        return redirect_with_error(task_id, "Probe failed:\n" + str(traceback.format_exc())[:1000])
     return RedirectResponse("/task/" + task_id, status_code=303)
-
-
-@app.post("/task/{task_id}/cloak-probe", response_class=RedirectResponse)
-@app.post("/task/{task_id}/cloak-probe", response_class=RedirectResponse)
-@app.post("/task/{task_id}/cloak-probe", response_class=RedirectResponse)
 async def task_cloak_probe(task_id: str):
     from spiderpilot.probe.cloak_cdp import capture_with_cloakbrowser
     spec = load_spec(task_spec_path(task_id))
