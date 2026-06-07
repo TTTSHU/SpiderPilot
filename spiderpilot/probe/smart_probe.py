@@ -118,7 +118,6 @@ def _probe_sample(
         (cloak_dir / "cookies.json").write_text(json.dumps(browser_cookies, ensure_ascii=False, indent=2), encoding="utf-8")
 
         print(f"  CloakBrowser: html={len(rendered)}b api_requests={len(api_requests)} api_responses={len(list(cloak_responses_dir.glob('*.json')))} cookies={len(browser_cookies)}", flush=True)
-    _write_progress(sample_dir, f"CloakBrowser: captured {len(api_requests)} API requests")
     finally:
         browser.close()
 
