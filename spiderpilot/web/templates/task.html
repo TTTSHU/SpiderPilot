@@ -67,8 +67,7 @@ pre{background:#0d1117;border:1px solid #30363d;border-radius:6px;padding:12px;o
   <div class="card">
     <h2>执行流水线</h2>
     <div class="pipeline">
-      <form method="post" action="/task/{{ task_id }}/probe"><button class="btn {% if state.has_probe %}btn-primary{% endif %}">1. HTTP Probe</button></form>
-<form method="post" action="/task/{{ task_id }}/cloak-probe"><button class="btn" style="background:#8b5cf6;border-color:#8b5cf6;color:#fff">CloakBrowser</button></form>
+      <form method="post" action="/task/{{ task_id }}/probe"><button class="btn {% if state.has_probe %}btn-primary{% endif %}">1. Probe</button></form>
       <form method="post" action="/task/{{ task_id }}/reverse-ai"><button class="btn btn-ai">2. AI 分析</button></form>
       <form method="post" action="/task/{{ task_id }}/generate-ai"><button class="btn btn-ai">3. AI 生成代码</button></form>
       <form method="post" action="/task/{{ task_id }}/run"><button class="btn {% if state.has_result %}btn-primary{% endif %}">4. 运行</button></form>
