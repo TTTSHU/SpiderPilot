@@ -178,6 +178,23 @@ async def task_cloak_probe(task_id: str):
     return RedirectResponse("/task/" + task_id, status_code=303)
 
 @app.post("/task/{task_id}/reverse-ai", response_class=RedirectResponse)
+@app.post("/task/{task_id}/reverse-ai", response_class=RedirectResponse)
+async def task_reverse_ai(task_id: str):
+    """Run AI reverse analysis in background, return immediately."""
+    import asyncio, concurrent.futures
+    from spiderpilot.ai_reverse import ai_reverse
+
+    def run_sync():
+        ai_reverse(task_spec_path(task_id), WORKSPACE)
+        (WORKSPACE / "artifacts" / task_id / "probe_progress.txt").write_text(
+            "Done: AI analysis complete", encoding="utf-8"
+        )
+
+    loop = asyncio.get_running_loop()
+    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+        loop.run_in_executor(pool, run_sync)
+    return RedirectResponse("/task/" + task_id, status_code=303)
+
 async def task_reverse_ai(task_id: str):
     from spiderpilot.ai_reverse import ai_reverse
     try:
@@ -199,30 +216,49 @@ async def task_cloak_probe(task_id: str):
 
 
 @app.post("/task/{task_id}/generate-ai", response_class=RedirectResponse)
+@app.post("/task/{task_id}/generate-ai", response_class=RedirectResponse)
 async def task_generate_ai(task_id: str):
+    import asyncio, concurrent.futures
+    from spiderpilot.generator.codegen import ai_generate
     plan_path = WORKSPACE / "plans" / f"{task_id}.yaml"
-    err = safe_action("generate-ai", ai_generate, plan_path, WORKSPACE)
-    if err:
-        return redirect_with_error(task_id, err)
-    return RedirectResponse(f"/task/{task_id}", status_code=303)
+    def run_sync():
+        ai_generate(plan_path, WORKSPACE)
+        (WORKSPACE / "artifacts" / task_id / "probe_progress.txt").write_text("Done: code generated", encoding="utf-8")
+    loop = asyncio.get_running_loop()
+    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+        loop.run_in_executor(pool, run_sync)
+    return RedirectResponse("/task/" + task_id, status_code=303)
+
 
 @app.post("/task/{task_id}/run", response_class=RedirectResponse)
+@app.post("/task/{task_id}/run", response_class=RedirectResponse)
 async def task_run(task_id: str):
-    spec_path = task_spec_path(task_id)
+    import asyncio, concurrent.futures
+    from spiderpilot.runner.local_runner import run_plan
     plan_path = WORKSPACE / "plans" / f"{task_id}.yaml"
-    err = safe_action("run", run_plan, spec_path, plan_path, WORKSPACE)
-    if err:
-        return redirect_with_error(task_id, err)
-    return RedirectResponse(f"/task/{task_id}", status_code=303)
+    def run_sync():
+        run_plan(task_spec_path(task_id), plan_path, WORKSPACE)
+        (WORKSPACE / "artifacts" / task_id / "probe_progress.txt").write_text("Done: extraction complete", encoding="utf-8")
+    loop = asyncio.get_running_loop()
+    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+        loop.run_in_executor(pool, run_sync)
+    return RedirectResponse("/task/" + task_id, status_code=303)
+
 
 @app.post("/task/{task_id}/validate", response_class=RedirectResponse)
+@app.post("/task/{task_id}/validate", response_class=RedirectResponse)
 async def task_validate(task_id: str):
-    spec_path = task_spec_path(task_id)
+    import asyncio, concurrent.futures
+    from spiderpilot.validator.result_validator import validate_results
     result_path = WORKSPACE / "results" / f"{task_id}.json"
-    err = safe_action("validate", validate_results, spec_path, result_path, WORKSPACE)
-    if err:
-        return redirect_with_error(task_id, err)
-    return RedirectResponse(f"/task/{task_id}", status_code=303)
+    def run_sync():
+        validate_results(task_spec_path(task_id), result_path, WORKSPACE)
+        (WORKSPACE / "artifacts" / task_id / "probe_progress.txt").write_text("Done: validation complete", encoding="utf-8")
+    loop = asyncio.get_running_loop()
+    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+        loop.run_in_executor(pool, run_sync)
+    return RedirectResponse("/task/" + task_id, status_code=303)
+
 
 @app.post("/task/{task_id}/repair-ai", response_class=RedirectResponse)
 async def task_repair_ai(task_id: str):
