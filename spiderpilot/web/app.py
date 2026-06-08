@@ -123,16 +123,24 @@ def redirect_with_error(task_id: str, msg: str) -> RedirectResponse:
     return RedirectResponse(f"/task/{task_id}?error={msg}", status_code=303)
 
 @app.post("/task/{task_id}/probe", response_class=RedirectResponse)
+@app.post("/task/{task_id}/probe", response_class=RedirectResponse)
 async def task_probe(task_id: str):
-    """Smart probe: CloakBrowser capture, curl_cffi replay."""
+    """Smart probe: run in thread to avoid event loop conflict."""
+    import asyncio, concurrent.futures
     from spiderpilot.probe.smart_probe import smart_probe
-    spec_path = task_spec_path(task_id)
-    try:
-        report = smart_probe(spec_path, WORKSPACE, wait_seconds=8)
-    except Exception as e:
-        import traceback
-        return redirect_with_error(task_id, "Probe failed:\n" + str(traceback.format_exc())[:1000])
+
+    def run_sync():
+        return smart_probe(task_spec_path(task_id), WORKSPACE, wait_seconds=8)
+
+    loop = asyncio.get_running_loop()
+    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+        try:
+            await loop.run_in_executor(pool, run_sync)
+        except Exception as e:
+            import traceback
+            return redirect_with_error(task_id, "Probe failed:\n" + str(traceback.format_exc())[:1000])
     return RedirectResponse("/task/" + task_id, status_code=303)
+
 async def task_cloak_probe(task_id: str):
     from spiderpilot.probe.cloak_cdp import capture_with_cloakbrowser
     spec = load_spec(task_spec_path(task_id))
