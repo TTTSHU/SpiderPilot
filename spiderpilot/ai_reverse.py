@@ -12,6 +12,7 @@ from typing import Any
 
 import yaml
 
+from spiderpilot.reverse.html_compressor import collect_artifacts_smart
 from spiderpilot.llm import chat_json
 from spiderpilot.spec import CrawlSpec, load_spec
 
@@ -104,6 +105,8 @@ def _build_reverse_prompt(spec: CrawlSpec, artifact_root: Path) -> list[dict[str
 {chr(10).join(fields_desc)}
 
 Page artifacts:
+- JSON responses are provided COMPLETE (no truncation).
+- HTML is compressed text (tags stripped, only visible content).
 {artifacts_text}
 
 Analyze where each field can be extracted. Return JSON."""
