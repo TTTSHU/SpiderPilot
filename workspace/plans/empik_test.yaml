@@ -1,0 +1,21 @@
+version: 1
+name: empik_test
+target_type: detail
+source:
+  type: json_response
+  strategy: ai_reverse
+  confidence: 0.95
+  sample_urls:
+  - https://httpbin.org/json
+fields:
+  title:
+    source: json_response
+    path: $.slideshow.slides[0].title
+    confidence: 1.0
+    required: true
+    type: string
+    normalize: null
+    note: Found in slideshow JSON
+    status: resolved
+notes:
+- AI-generated Extraction Plan. Review before running.

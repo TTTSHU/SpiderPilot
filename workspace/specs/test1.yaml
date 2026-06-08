@@ -1,0 +1,26 @@
+version: 1
+name: test1
+target_type: detail
+samples:
+- id: s1
+  url: https://www.empik.com/ps5-ds-midnight-black-cfi-zct2w-eas-sony-interactive-enterteinment,p1688380969,multimedia-p
+  expected:
+    title:
+      equals: Kontroler bezprzewodowy DualSense® MIDNIGHT BLACK CFI-ZCT2W
+    price:
+      equals: 239,59
+- id: s2
+  url: https://www.empik.com/kontroler-bezprzewodowy-ps5-froggiex-czarny-dualsense-rgb-turbo-programowalne-przyciski-froggiex,p1690211079,multimedia-p?sponsored=true&offerId=176727056&mpShopId=8647
+  expected:
+    title:
+      equals: Kontroler bezprzewodowy PS5 Froggiex czarny DualSense, RGB, Turbo, programowalne
+        przyciski
+    price:
+      equals: 229,99
+fields:
+  title:
+    type: string
+    required: true
+  price:
+    type: decimal
+    required: true

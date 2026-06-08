@@ -1,0 +1,31 @@
+version: 1
+name: test1
+target_type: detail
+source:
+  type: html
+  strategy: ai_reverse
+  confidence: 0.9
+  sample_urls:
+  - https://www.empik.com/ps5-ds-midnight-black-cfi-zct2w-eas-sony-interactive-enterteinment,p1688380969,multimedia-p
+  - https://www.empik.com/kontroler-bezprzewodowy-ps5-froggiex-czarny-dualsense-rgb-turbo-programowalne-przyciski-froggiex,p1690211079,multimedia-p?sponsored=true&offerId=176727056&mpShopId=8647
+fields:
+  title:
+    source: embedded_json
+    path: $.name
+    confidence: 0.9
+    required: true
+    type: string
+    normalize: null
+    note: Found in JSON-LD product data
+    status: resolved
+  price:
+    source: embedded_json
+    path: $.offers.price
+    confidence: 0.9
+    required: true
+    type: decimal
+    normalize: null
+    note: Found in JSON-LD offers data
+    status: resolved
+notes:
+- AI-generated Extraction Plan. Review before running.

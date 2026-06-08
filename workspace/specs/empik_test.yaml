@@ -1,0 +1,13 @@
+version: 1
+name: empik_test
+target_type: detail
+samples:
+- id: s1
+  url: https://httpbin.org/json
+  expected:
+    title:
+      equals: Wake up to WonderWidgets!
+fields:
+  title:
+    type: string
+    required: true

@@ -1,0 +1,18 @@
+version: 1
+name: test_warning
+target_type: detail
+samples:
+- id: s1
+  url: https://www.empik.com/ps5-ds-midnight-black-cfi-zct2w-eas-sony-interactive-enterteinment,p1688380969,multimedia-p
+  expected:
+    title:
+      equals: PS5
+    price:
+      equals: '2199'
+fields:
+  price:
+    type: string
+    required: true
+  title:
+    type: string
+    required: true

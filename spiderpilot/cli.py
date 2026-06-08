@@ -216,9 +216,10 @@ def cloak_probe(
     capture: bool = typer.Option(False, "--capture", help="Launch CloakBrowser and capture rendered/network artifacts."),
     wait_seconds: float = typer.Option(5.0, "--wait", help="Seconds to wait for network events."),
     signature_hook: bool = typer.Option(False, "--signature-hook", help="Inject SpiderPilot signature runtime hooks."),
+    headless: bool = typer.Option(True, "--headless/--no-headless", help="Run browser in headless mode."),
 ) -> None:
     """Prepare or run CloakBrowser probe artifacts."""
-    report = run_cloak_probe(file, workspace=workspace, capture=capture, wait_seconds=wait_seconds, signature_hook=signature_hook)
+    report = run_cloak_probe(file, workspace=workspace, capture=capture, wait_seconds=wait_seconds, signature_hook=signature_hook, headless=headless)
     report_path = workspace / "artifacts" / report["task"] / "cloak_probe_report.yaml"
     typer.echo(f"CloakBrowser available: {report['cloakbrowser']['available']}")
     typer.echo(f"Report: {report_path}")
