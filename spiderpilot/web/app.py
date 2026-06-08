@@ -123,7 +123,6 @@ def redirect_with_error(task_id: str, msg: str) -> RedirectResponse:
     return RedirectResponse(f"/task/{task_id}?error={msg}", status_code=303)
 
 @app.post("/task/{task_id}/probe", response_class=RedirectResponse)
-@app.post("/task/{task_id}/probe", response_class=RedirectResponse)
 async def task_probe(task_id: str):
     """Smart probe: run in thread to avoid event loop conflict."""
     import asyncio, concurrent.futures
@@ -152,6 +151,27 @@ async def task_cloak_probe(task_id: str):
             import traceback
             return redirect_with_error(task_id, "CloakBrowser failed: " + str(traceback.format_exc())[:500])
     return RedirectResponse("/task/" + task_id, status_code=303)
+
+@app.post("/task/{task_id}/reverse-ai", response_class=RedirectResponse)
+async def task_reverse_ai(task_id: str):
+    from spiderpilot.ai_reverse import ai_reverse
+    try:
+        ai_reverse(task_spec_path(task_id), WORKSPACE)
+    except Exception as e:
+        import traceback
+        return redirect_with_error(task_id, "AI reverse failed:\n" + str(traceback.format_exc())[:500])
+    return RedirectResponse("/task/" + task_id, status_code=303)
+
+@app.post("/task/{task_id}/cloak-probe", response_class=RedirectResponse)
+async def task_cloak_probe(task_id: str):
+    from spiderpilot.probe.smart_probe import smart_probe
+    try:
+        smart_probe(task_spec_path(task_id), WORKSPACE, wait_seconds=8)
+    except Exception as e:
+        import traceback
+        return redirect_with_error(task_id, "CloakBrowser failed:\n" + str(traceback.format_exc())[:500])
+    return RedirectResponse("/task/" + task_id, status_code=303)
+
 
 @app.post("/task/{task_id}/generate-ai", response_class=RedirectResponse)
 async def task_generate_ai(task_id: str):
