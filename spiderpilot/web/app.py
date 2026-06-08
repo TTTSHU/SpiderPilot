@@ -219,7 +219,7 @@ async def task_cloak_probe(task_id: str):
 @app.post("/task/{task_id}/generate-ai", response_class=RedirectResponse)
 async def task_generate_ai(task_id: str):
     import asyncio, concurrent.futures
-    from spiderpilot.generator.codegen import ai_generate
+    from spiderpilot.ai_codegen import ai_generate
     plan_path = WORKSPACE / "plans" / f"{task_id}.yaml"
     def run_sync():
         ai_generate(plan_path, WORKSPACE)
