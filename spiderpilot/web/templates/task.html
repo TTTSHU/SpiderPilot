@@ -166,6 +166,9 @@ pre{background:#0d1117;border:1px solid #30363d;border-radius:6px;padding:12px;o
                 el.textContent = data.progress;
                 if (data.progress.indexOf('Done:') === -1) {
                     setTimeout(pollProgress, 1000);
+                } else {
+                    // Reload page when done
+                    setTimeout(function() { location.reload(); }, 500);
                 }
             }
         } catch(e) {}
