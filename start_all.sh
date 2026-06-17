@@ -11,5 +11,6 @@ sleep 1
 
 pip install -e "$ROOT" -q 2>/dev/null
 
+export SPIDER_HOST=http://127.0.0.1:9002
 echo "🕸️  SpiderPilot: http://localhost:9002"
 python -m uvicorn spiderpilot.web.app:app --host 0.0.0.0 --port 9002 --reload

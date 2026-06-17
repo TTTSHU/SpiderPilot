@@ -8,7 +8,7 @@ import threading
 
 from spiderpilot.store import append_think, update_status, get_task
 
-SERVER = os.environ.get("SPIDER_HOST", "http://127.0.0.1:8000")
+SERVER = os.environ.get("SPIDER_HOST", "http://127.0.0.1:9002")
 
 
 def run_ai_analysis(task_id: str):
