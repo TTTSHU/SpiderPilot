@@ -12,6 +12,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 import jinja2
 
 from spiderpilot.agent_scanner import scan_agents, write_trigger as write_agent_trigger
+from spiderpilot.analyzer import analyze_in_background
 from spiderpilot.store import (
     create_task, get_task, list_tasks, update_status, update_spec,
     save_analysis, save_spider_code, save_raw_html,
@@ -100,20 +101,20 @@ async def api_create(name: str = Form(...), url: str = Form(...),
 
 @app.post("/task/{task_id}/trigger")
 async def api_trigger(task_id: str, agent: str = ""):
+    """点击「AI 分析」→ 在后台自动执行分析，无需人工干预。"""
     task = get_task(task_id) or {}
     spec = task.get("spec", {})
     url = spec.get("url", "")
-    if not agent:
-        agent = spec.get("agent", "") or scan_agents()[0]["id"] if scan_agents() else "codewhale"
 
+    if not agent:
+        agent = spec.get("agent", "") or (scan_agents()[0]["id"] if scan_agents() else "codewhale")
     spec["agent"] = agent
     update_spec(task_id, spec)
-    update_status(task_id, "waiting_ai")
 
-    instruction = write_agent_trigger(
-        Path("workspace") / task_id, agent, url
-    )
-    append_log(task_id, f"触发 {agent}: {instruction}")
+    # 在后台线程中启动分析
+    analyze_in_background(task_id)
+
+    append_log(task_id, f"触发分析: {url}")
     return RedirectResponse(f"/task/{task_id}", status_code=303)
 
 
