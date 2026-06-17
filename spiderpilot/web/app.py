@@ -20,6 +20,8 @@ from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 import jinja2
 
+from spiderpilot.agent_scanner import scan_agents, write_trigger as write_agent_trigger
+
 app = FastAPI(title="SpiderPilot")
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -230,22 +232,55 @@ async def save_spider(task_id: str, body: dict):
     return {"ok": True}
 
 
+@app.get("/api/agents")
+async def list_agents():
+    """扫描本地 AI 工具并返回列表"""
+    agents = scan_agents()
+    if not agents:
+        # 如果没有检测到任何 agent，至少返回一个提示
+        agents = [{
+            "id": "none",
+            "name": "未检测到 AI 工具",
+            "icon": "❓",
+            "description": "请安装 CodeWhale 或其他 AI 工具",
+        }]
+    return agents
+
+
 @app.post("/task/{task_id}/trigger")
-async def trigger_ai(task_id: str):
-    """用户点击「AI 分析」→ 写入 trigger 文件，等 CodeWhale 处理"""
+async def trigger_ai(task_id: str, agent: str = ""):
+    """用户选择 AI 工具后触发分析"""
     task_dir = WORKSPACE / task_id
     task_dir.mkdir(parents=True, exist_ok=True)
-    _update_status(task_dir, "waiting_ai")
-    _log(task_dir, "等待 CodeWhale 处理...")
-    trigger = {
-        "task_id": task_id,
-        "action": "analyze",
-        "created_at": _now(),
-    }
-    (task_dir / ".trigger").write_text(
-        json.dumps(trigger, ensure_ascii=False),
+
+    # 读取 spec 中的 URL
+    spec = {}
+    spec_path = task_dir / "spec.yaml"
+    if spec_path.exists():
+        spec = yaml.safe_load(spec_path.read_text(encoding="utf-8")) or {}
+    url = spec.get("url", "")
+
+    # 如果没有传 agent，尝试从 spec 读取
+    if not agent:
+        agent = spec.get("agent", "")
+    if not agent:
+        # 默认用第一个检测到的 agent
+        agents = scan_agents()
+        agent = agents[0]["id"] if agents else "codewhale"
+
+    # 写入 agent 选择到 spec
+    spec["agent"] = agent
+    (task_dir / "spec.yaml").write_text(
+        yaml.safe_dump(spec, allow_unicode=True, sort_keys=False),
         encoding="utf-8",
     )
+
+    _update_status(task_dir, "waiting_ai")
+
+    # 根据 agent 类型写触发文件
+    instruction = write_agent_trigger(task_dir, agent, url)
+    _log(task_dir, f"触发 {agent}: {instruction}")
+
     return RedirectResponse(f"/task/{task_id}", status_code=303)
 
 

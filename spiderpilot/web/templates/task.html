@@ -99,24 +99,28 @@ pre { background: #1e1e1e; color: #d4d4d4; border-radius: 8px; padding: 16px; ov
     {% endif %}
 
     <!-- 反爬检测 -->
-    <!-- AI 操作按钮 -->
+    <!-- AI 工具选择 -->
     <div class="card">
         <h2>🤖 AI 分析</h2>
         {% if state.status in ("created",) %}
-        <form action="/task/{{ task_id }}/trigger" method="post" style="display:inline">
-            <button class="btn btn-primary" type="submit">触发 AI 分析</button>
-        </form>
-        <span style="color:#888;font-size:13px;margin-left:12px">需要 CodeWhale 运行中</span>
+        <div id="agent-selector">
+            <p style="margin-bottom:12px;color:#666;font-size:13px">选择 AI 工具:</p>
+            <div id="agent-list" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">
+                <span style="color:#888;font-size:13px">扫描中...</span>
+            </div>
+            <form action="/task/{{ task_id }}/trigger" method="post" id="trigger-form" style="display:none">
+                <input type="hidden" name="agent" id="selected-agent">
+                <button class="btn btn-primary" type="submit">触发 AI 分析</button>
+            </form>
+            <p style="color:#888;font-size:12px;margin-top:8px">自动检测本地安装的 AI 工具</p>
+        </div>
         {% elif state.status == "waiting_ai" %}
         <div style="display:flex;align-items:center;gap:12px">
             <span style="font-size:32px">⏳</span>
             <div>
-                <strong>等待 CodeWhale 处理...</strong>
+                <strong>等待 AI 处理...</strong>
                 <br><span style="color:#888;font-size:13px">
-                请打开 CodeWhale 终端执行: 
-                <code style="background:#eee;padding:2px 6px;border-radius:4px">处理 spiderpilot 待办</code>
-                <br><br>没有 CodeWhale？ 
-                <a href="https://codewhale.ai" target="_blank" style="color:#4f46e5">下载安装 →</a>
+                {{ spec.get("agent","") }}
                 </span>
             </div>
         </div>
@@ -154,5 +158,37 @@ pre { background: #1e1e1e; color: #d4d4d4; border-radius: 8px; padding: 16px; ov
     </div>
     {% endif %}
 </div>
+<script>
+// 扫描本地 AI 工具
+fetch('/api/agents')
+  .then(r => r.json())
+  .then(agents => {
+    var list = document.getElementById('agent-list');
+    if (!list) return;
+    list.innerHTML = '';
+    if (!agents.length) {
+      list.innerHTML = '<span style="color:#888;font-size:13px">未检测到 AI 工具 — <a href="https://codewhale.ai" target="_blank">安装 CodeWhale</a></span>';
+      return;
+    }
+    agents.forEach(function(a, i) {
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.style.cssText = 'padding:8px 16px;border:2px solid #ddd;border-radius:8px;background:#fff;cursor:pointer;font-size:14px;transition:all .15s';
+      btn.innerHTML = a.icon + ' ' + a.name;
+      btn.title = a.description;
+      btn.onclick = function() {
+        // 取消其他选中
+        document.querySelectorAll('#agent-list button').forEach(function(b){b.style.borderColor='#ddd';b.style.background='#fff'});
+        btn.style.borderColor = '#4f46e5';
+        btn.style.background = '#eef2ff';
+        document.getElementById('selected-agent').value = a.id;
+        document.getElementById('trigger-form').style.display = 'block';
+      };
+      list.appendChild(btn);
+      // 默认选中第一个
+      if (i === 0) btn.onclick();
+    });
+  });
+</script>
 </body>
 </html>
