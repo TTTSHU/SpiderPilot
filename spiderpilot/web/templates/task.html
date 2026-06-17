@@ -50,7 +50,13 @@ pre { background: #1e1e1e; color: #d4d4d4; border-radius: 8px; padding: 16px; ov
 <body>
 <div class="container">
     <h1>{{ task_id }}</h1>
-    <p class="breadcrumb"><a href="/">← 返回任务列表</a></p>
+    <p class="breadcrumb">
+        <a href="/">← 返回任务列表</a>
+        <form action="/task/{{ task_id }}/delete" method="post" style="display:inline;margin-left:16px"
+              onsubmit="return confirm('确认删除任务 {{ task_id }}？')">
+            <button class="btn btn-secondary" type="submit" style="padding:4px 12px;font-size:12px">🗑 删除</button>
+        </form>
+    </p>
 
     <!-- 进度条 -->
     <div class="status-bar">

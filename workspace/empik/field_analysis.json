@@ -1,9 +1,325 @@
 {
+  "page_type": "product_detail",
+  "fields": [
+    {
+      "name": "product_id",
+      "value": "p1380286231",
+      "type": "str",
+      "source": "url",
+      "path": "product_id",
+      "business_value": 5,
+      "priority": "high"
+    },
+    {
+      "name": "title",
+      "value": "Depilator Philips Lumea 9900 IPL BRI977/00 SenseIQ SmartSkin + 4 nasadki Bikini + Nogi + Twarz",
+      "type": "str",
+      "source": "apollo_state",
+      "path": "baseInformation.name",
+      "business_value": 5,
+      "priority": "high"
+    },
+    {
+      "name": "product_url",
+      "value": "https://www.empik.com/philips-depilator-ipl-lumea-bri977-00-rozowy,p1380286231,agd-p",
+      "type": "str",
+      "source": "url",
+      "path": "selfUrl",
+      "business_value": 4,
+      "priority": "high"
+    },
+    {
+      "name": "cover_small",
+      "value": "https://ecsmedia.pl/c/depilator-philips-lumea-9900-ipl-bri977-00-senseiq-smartskin-4-nasadki-bikini-nogi-twarz-p-iext224890040.jpg",
+      "type": "str",
+      "source": "apollo_state",
+      "path": "cover.small",
+      "business_value": 4,
+      "priority": "medium"
+    },
+    {
+      "name": "cover_medium",
+      "value": "https://ecsmedia.pl/c/depilator-philips-lumea-9900-ipl-bri977-00-senseiq-smartskin-4-nasadki-bikini-nogi-twarz-w-iext224890040.jpg",
+      "type": "str",
+      "source": "apollo_state",
+      "path": "cover.medium",
+      "business_value": 4,
+      "priority": "medium"
+    },
+    {
+      "name": "cover_large",
+      "value": "https://ecsmedia.pl/c/depilator-philips-lumea-9900-ipl-bri977-00-senseiq-smartskin-4-nasadki-bikini-nogi-twarz-b-iext224890040.jpg",
+      "type": "str",
+      "source": "apollo_state",
+      "path": "cover.large",
+      "business_value": 4,
+      "priority": "medium"
+    },
+    {
+      "name": "rating_score",
+      "value": "4.903226",
+      "type": "float",
+      "source": "apollo_state",
+      "path": "rating.score",
+      "business_value": 4,
+      "priority": "high"
+    },
+    {
+      "name": "rating_count",
+      "value": "31",
+      "type": "int",
+      "source": "apollo_state",
+      "path": "rating.count",
+      "business_value": 4,
+      "priority": "high"
+    },
+    {
+      "name": "category_ux_name",
+      "value": "AGD",
+      "type": "str",
+      "source": "apollo_state",
+      "path": "categoryInfo.uxFriendlyName",
+      "business_value": 3,
+      "priority": "medium"
+    },
+    {
+      "name": "category_tree",
+      "value": "AGD > Małe AGD > Urządzenia do pielęgnacji > Depilatory",
+      "type": "str",
+      "source": "apollo_state",
+      "path": "categories[].name (joined)",
+      "business_value": 4,
+      "priority": "high"
+    },
+    {
+      "name": "category_ids",
+      "value": "51 > 5101 > 510110 > 51011002",
+      "type": "str",
+      "source": "apollo_state",
+      "path": "categories[].id (joined)",
+      "business_value": 3,
+      "priority": "medium"
+    },
+    {
+      "name": "leaf_category",
+      "value": "Depilatory",
+      "type": "str",
+      "source": "apollo_state",
+      "path": "categories[-1].name",
+      "business_value": 4,
+      "priority": "high"
+    },
+    {
+      "name": "leaf_category_id",
+      "value": "51011002",
+      "type": "str",
+      "source": "apollo_state",
+      "path": "categories[-1].id",
+      "business_value": 3,
+      "priority": "medium"
+    },
+    {
+      "name": "brand",
+      "value": "Philips",
+      "type": "str",
+      "source": "extracted",
+      "path": "from title/SmartAuthor",
+      "business_value": 5,
+      "priority": "high"
+    },
+    {
+      "name": "offers_count",
+      "value": "27",
+      "type": "int",
+      "source": "graphql",
+      "path": "getOffersForProduct.length",
+      "business_value": 4,
+      "priority": "high"
+    },
+    {
+      "name": "price_min",
+      "value": "1639.0",
+      "type": "float",
+      "source": "graphql",
+      "path": "min(offers.price)",
+      "business_value": 5,
+      "priority": "high"
+    },
+    {
+      "name": "price_max",
+      "value": "1999.99",
+      "type": "float",
+      "source": "graphql",
+      "path": "max(offers.price)",
+      "business_value": 5,
+      "priority": "high"
+    },
+    {
+      "name": "price_mean",
+      "value": "1788.14",
+      "type": "float",
+      "source": "computed",
+      "path": "mean(offers.price)",
+      "business_value": 4,
+      "priority": "medium"
+    },
+    {
+      "name": "price_range",
+      "value": "360.99",
+      "type": "float",
+      "source": "computed",
+      "path": "max-min",
+      "business_value": 4,
+      "priority": "medium"
+    },
+    {
+      "name": "lowest_price",
+      "value": "1639.0",
+      "type": "float",
+      "source": "graphql",
+      "path": "offers[0].originalPrice",
+      "business_value": 5,
+      "priority": "high"
+    },
+    {
+      "name": "lowest_price_shop",
+      "value": "Komputronik",
+      "type": "str",
+      "source": "graphql",
+      "path": "offers[0].shop.name",
+      "business_value": 4,
+      "priority": "high"
+    },
+    {
+      "name": "lowest_price_shop_rating",
+      "value": "4.8",
+      "type": "float",
+      "source": "graphql",
+      "path": "offers[0].shop.ratingSummary.score",
+      "business_value": 3,
+      "priority": "medium"
+    },
+    {
+      "name": "lowest_price_avail",
+      "value": "2 dni robocze",
+      "type": "str",
+      "source": "graphql",
+      "path": "offers[0].availability.name",
+      "business_value": 4,
+      "priority": "high"
+    },
+    {
+      "name": "highest_price",
+      "value": "1999.99",
+      "type": "float",
+      "source": "graphql",
+      "path": "offers[-1].originalPrice",
+      "business_value": 4,
+      "priority": "medium"
+    },
+    {
+      "name": "highest_price_shop",
+      "value": "Nania.pl",
+      "type": "str",
+      "source": "graphql",
+      "path": "offers[-1].shop.name",
+      "business_value": 3,
+      "priority": "medium"
+    },
+    {
+      "name": "unique_shops",
+      "value": "26",
+      "type": "int",
+      "source": "computed",
+      "path": "unique(offers.shop_name)",
+      "business_value": 3,
+      "priority": "medium"
+    },
+    {
+      "name": "availability_types",
+      "value": "IN_24_H, IN_48_H, IN_72_H, IN_UNKNOWN",
+      "type": "str",
+      "source": "computed",
+      "path": "unique(offers.availability_type)",
+      "business_value": 3,
+      "priority": "medium"
+    },
+    {
+      "name": "best_offer_id",
+      "value": "prod:p1380286231:136168220",
+      "type": "str",
+      "source": "graphql",
+      "path": "offers[0].offerId",
+      "business_value": 4,
+      "priority": "high"
+    },
+    {
+      "name": "best_offer_price",
+      "value": "1639.0",
+      "type": "float",
+      "source": "graphql",
+      "path": "offers[0].originalPrice",
+      "business_value": 5,
+      "priority": "high"
+    },
+    {
+      "name": "has_discount",
+      "value": "true",
+      "type": "bool",
+      "source": "apollo_state",
+      "path": "bestOffer.appliedDiscount",
+      "business_value": 4,
+      "priority": "high"
+    },
+    {
+      "name": "discount_price",
+      "value": "1579.00",
+      "type": "float",
+      "source": "apollo_state",
+      "path": "bestOffer.appliedDiscount.price",
+      "business_value": 5,
+      "priority": "high"
+    },
+    {
+      "name": "original_list_price",
+      "value": "1689.00",
+      "type": "float",
+      "source": "apollo_state",
+      "path": "bestOffer.originalPrice",
+      "business_value": 5,
+      "priority": "high"
+    },
+    {
+      "name": "discount_percent",
+      "value": "6.5",
+      "type": "float",
+      "source": "computed",
+      "path": "(original-discount)/original*100",
+      "business_value": 4,
+      "priority": "medium"
+    },
+    {
+      "name": "badge",
+      "value": "TOP",
+      "type": "str",
+      "source": "apollo_state",
+      "path": "badges[0].name",
+      "business_value": 3,
+      "priority": "medium"
+    },
+    {
+      "name": "gallery_count",
+      "value": "8",
+      "type": "int",
+      "source": "apollo_state",
+      "path": "gallery.images.length",
+      "business_value": 3,
+      "priority": "medium"
+    }
+  ],
   "antibot": {
-    "status": "detected",
-    "vendor": "cloudflare",
-    "details": "HTTP 403, Cloudflare challenge (cf-mitigated:challenge), __cf_bm cookie set",
-    "recommendation": "需要 curl_cffi (chrome120指纹) 绕过。GraphQL接口可直接请求。"
+    "status": "clear",
+    "vendor": null
   },
-  "log": "反爬检测完成: Cloudflare detected"
+  "log": "字段分析完成，找到35个字段。来源：HTML Apollo State (SSR嵌入数据) + GraphQL API (getOffersForProduct)。GraphQL getVariantsForProduct返回空列表。产品有27个报价，来自26个不同商家，价格区间1639-1999.99 PLN。反爬状态：curl_cffi chrome120指纹通过，无验证码。"
 }

@@ -1,0 +1,8 @@
+{"time": "17:28:18", "text": "🧠 开始分析任务 empik... 目标: philips-depilator-ipl-lumea"}
+{"time": "17:28:23", "text": "🔍 反爬检测: 无Cookie请求 → HTTP 403, Cloudflare challenge"}
+{"time": "17:28:26", "text": "🛡️ 策略: 需要 curl_cffi (chrome120) TLS指纹绕过 Cloudflare"}
+{"time": "17:28:30", "text": "📡 使用 curl_cffi (chrome120) 访问 empik.com 首页获取 cookies"}
+{"time": "17:28:35", "text": "✅ cookies获取成功，开始请求 GraphQL 接口: getVariants"}
+{"time": "17:28:39", "text": "GraphQL getVariants 返回空数组，产品 p1380286231 无变体"}
+{"time": "17:28:44", "text": "📊 分析结果: 产品单页可直接通过curl_cffi获取HTML，GraphQL接口可用getProduct(id)查询。建议字段: title, price, shop, rating, description, category, attributes"}
+{"time": "17:30:40", "text": "✅ 字段分析完成! 从 Apollo State + GraphQL 提取 35 个字段: title, price, rating(4.9/31), 27个报价, 26个商家, 价格区间 1639-1999 PLN"}

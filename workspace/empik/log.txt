@@ -2,3 +2,6 @@
 [2026-06-17 17:20:06] 触发 codewhale: 在 CodeWhale 中说「处理 spiderpilot 待办」
 [2026-06-17 17:22:48] 开始探测页面...
 [2026-06-17 17:23:31] 反爬检测完成: Cloudflare detected
+[2026-06-17 17:29:20] 任务创建: https://www.empik.com/philips-depilator-ipl-lumea-bri977-00-rozowy,p1380286231,agd-p
+[2026-06-17 17:30:07] 页面探测完成：curl_cffi chrome120指纹成功。提取到Apollo State (4 entries)，GraphQL getOffersForProduct返回27个报价。
+[2026-06-17 17:30:08] 字段分析完成，找到35个字段。来源：HTML Apollo State (SSR嵌入数据) + GraphQL API (getOffersForProduct)。GraphQL getVariantsForProduct返回空列表。产品有27个报价，来自26个不同商家，价格区间1639-1999.99 PLN。反爬状态：curl_cffi chrome120指纹通过，无验证码。
