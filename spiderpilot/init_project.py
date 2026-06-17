@@ -168,12 +168,18 @@ cd {name}
 scrapy crawl {name} -o results.json
 ```
 
+## 需要 CodeWhale
+
+AI 分析由 CodeWhale 驱动，不是 LLM API。
+下载: https://codewhale.ai
+
 ## AI 工作流
 
-1. 在 Web UI 创建任务，输入 URL
-2. AI 自动分析页面，推荐字段
-3. 确认后 AI 生成爬虫代码到 `spiders/`
-4. 直接运行爬虫
+1. 在 Web UI 创建任务，输入 URL，点「AI 分析」
+2. 打开 CodeWhale 终端，说「处理 spiderpilot 待办」
+3. CodeWhale 自动分析页面、推荐字段、生成爬虫
+4. 刷新 Web UI 查看结果，爬虫代码在 `spiders/`
+5. 直接运行爬虫
 """,
         encoding="utf-8",
     )
