@@ -35,6 +35,7 @@ from spiderpilot.workflow import create_task, run_all
 from spiderpilot.repair.auto_repair import build_repair_report
 from spiderpilot.repair.loop import run_repair_loop
 from spiderpilot.templates.loader import list_templates, load_template
+from spiderpilot.init_project import init_project
 
 app = typer.Typer(help="SpiderPilot: AI-powered field-driven reverse crawling framework.")
 platform_app = typer.Typer(help="Platform workspace commands.")

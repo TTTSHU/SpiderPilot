@@ -230,6 +230,52 @@ async def save_spider(task_id: str, body: dict):
     return {"ok": True}
 
 
+@app.post("/task/{task_id}/trigger")
+async def trigger_ai(task_id: str):
+    """用户点击「AI 分析」→ 写入 trigger 文件，等 CodeWhale 处理"""
+    task_dir = WORKSPACE / task_id
+    task_dir.mkdir(parents=True, exist_ok=True)
+    _update_status(task_dir, "waiting_ai")
+    _log(task_dir, "等待 CodeWhale 处理...")
+    trigger = {
+        "task_id": task_id,
+        "action": "analyze",
+        "created_at": _now(),
+    }
+    (task_dir / ".trigger").write_text(
+        json.dumps(trigger, ensure_ascii=False),
+        encoding="utf-8",
+    )
+    return RedirectResponse(f"/task/{task_id}", status_code=303)
+
+
+@app.get("/api/pending")
+async def list_pending():
+    """列出所有等待 CodeWhale 处理的任务（CodeWhale 调用）"""
+    pending = []
+    if WORKSPACE.exists():
+        for task_dir in sorted(WORKSPACE.iterdir()):
+            if not task_dir.is_dir():
+                continue
+            trigger_path = task_dir / ".trigger"
+            if trigger_path.exists():
+                try:
+                    trigger = json.loads(trigger_path.read_text(encoding="utf-8"))
+                except Exception:
+                    trigger = {"task_id": task_dir.name}
+                spec = {}
+                spec_path = task_dir / "spec.yaml"
+                if spec_path.exists():
+                    spec = yaml.safe_load(spec_path.read_text(encoding="utf-8")) or {}
+                pending.append({
+                    "task_id": task_dir.name,
+                    "url": spec.get("url", ""),
+                    "platform": spec.get("platform", ""),
+                    "trigger": trigger,
+                })
+    return pending
+
+
 @app.post("/task/{task_id}/raw")
 async def save_raw_html(task_id: str, body: dict):
     """AI Agent 写入原始 HTML"""
