@@ -146,6 +146,7 @@ async def create_task(
     name: str = Form(...),
     url: str = Form(...),
     platform: str = Form(""),
+    agent: str = Form(""),
 ):
     """创建新任务 — 用户输入平台名 + URL"""
     task_id = name.replace(" ", "_").lower()
@@ -157,6 +158,7 @@ async def create_task(
         "name": task_id,
         "platform": platform or task_id,
         "url": url.strip(),
+        "agent": agent,
         "created_at": _now(),
         "status": "created",
     }
@@ -282,6 +284,48 @@ async def trigger_ai(task_id: str, agent: str = ""):
     _log(task_dir, f"触发 {agent}: {instruction}")
 
     return RedirectResponse(f"/task/{task_id}", status_code=303)
+
+
+@app.get("/task/{task_id}/think")
+async def get_think_stream(task_id: str):
+    """返回 AI 思考流"""
+    task_dir = WORKSPACE / task_id
+    path = task_dir / "think.jsonl"
+    if not path.exists():
+        return {"lines": []}
+    lines = []
+    for line in path.read_text(encoding="utf-8").strip().split("\n"):
+        if line:
+            try:
+                lines.append(json.loads(line))
+            except Exception:
+                pass
+    return {"lines": lines}
+
+
+@app.post("/task/{task_id}/think")
+async def append_think(task_id: str, body: dict):
+    """AI Agent 写入思考内容"""
+    task_dir = WORKSPACE / task_id
+    task_dir.mkdir(parents=True, exist_ok=True)
+    import time
+    entry = {
+        "time": time.strftime("%H:%M:%S"),
+        "text": body.get("text", ""),
+    }
+    with open(task_dir / "think.jsonl", "a", encoding="utf-8") as f:
+        f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+    return {"ok": True}
+
+
+@app.get("/task/{task_id}/progress")
+async def get_progress(task_id: str):
+    """返回任务进度（兼容）"""
+    task_dir = WORKSPACE / task_id
+    progress_path = task_dir / "progress.json"
+    if progress_path.exists():
+        return json.loads(progress_path.read_text(encoding="utf-8"))
+    return {"agents": [], "status": "waiting"}
 
 
 @app.get("/api/pending")

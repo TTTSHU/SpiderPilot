@@ -114,14 +114,15 @@ pre { background: #1e1e1e; color: #d4d4d4; border-radius: 8px; padding: 16px; ov
             </form>
             <p style="color:#888;font-size:12px;margin-top:8px">自动检测本地安装的 AI 工具</p>
         </div>
-        {% elif state.status == "waiting_ai" %}
-        <div style="display:flex;align-items:center;gap:12px">
-            <span style="font-size:32px">⏳</span>
-            <div>
-                <strong>等待 AI 处理...</strong>
-                <br><span style="color:#888;font-size:13px">
-                {{ spec.get("agent","") }}
-                </span>
+        {% elif state.status in ("waiting_ai", "probing") %}
+        <div>
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+                <span style="font-size:24px">🧠</span>
+                <strong>AI 思考中...</strong>
+                <span style="color:#888;font-size:12px" id="think-count"></span>
+            </div>
+            <div id="think-stream" style="background:#0d1117;color:#c9d1d9;border-radius:8px;padding:16px;font-family:monospace;font-size:12px;line-height:1.8;max-height:400px;overflow-y:auto">
+                <span style="color:#8b949e">⏳ 等待 AI 开始思考...</span>
             </div>
         </div>
         {% elif state.status == "probing" %}
@@ -189,6 +190,37 @@ fetch('/api/agents')
       if (i === 0) btn.onclick();
     });
   });
+})();
+
+// 实时思考流
+var lastLineCount = 0;
+function pollThink() {
+  var stream = document.getElementById('think-stream');
+  if (!stream) return setTimeout(pollThink, 2000);
+  fetch('/task/{{ task_id }}/think')
+    .then(function(r){return r.json()})
+    .then(function(data){
+      var lines = data.lines || [];
+      if (!lines.length) { setTimeout(pollThink, 2000); return; }
+      if (lines.length === lastLineCount) { setTimeout(pollThink, 1500); return; }
+      lastLineCount = lines.length;
+      var countEl = document.getElementById('think-count');
+      if (countEl) countEl.textContent = '('+lines.length+' 条思考记录)';
+      stream.innerHTML = lines.map(function(l){
+        var color = '#8b949e';
+        if (/发现|找到|检测|Cloudflare|成功|curl_cffi|绕过|GraphQL|变体|字段|title|price/.test(l.text)) color = '#58a6ff';
+        if (/错误|失败|403|不行|超时/.test(l.text)) color = '#f85149';
+        if (/✅|完成|写入|建议|推荐/.test(l.text)) color = '#3fb950';
+        return '<div><span style="color:#6e7681">['+l.time+']</span> <span style="color:'+color+'">'+l.text+'</span></div>';
+      }).join('');
+      stream.scrollTop = stream.scrollHeight;
+      setTimeout(pollThink, 1500);
+    })
+    .catch(function(){setTimeout(pollThink, 3000)});
+}
+{% if state.status in ("waiting_ai", "probing") %}
+setTimeout(pollThink, 1000);
+{% endif %}
 </script>
 </body>
 </html>

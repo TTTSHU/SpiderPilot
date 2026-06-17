@@ -1,0 +1,1 @@
+{"status":"running","agents":[{"name":"🔍 反爬检测","status":"done","message":"检测到 Cloudflare 保护 (HTTP 403, cf-mitigated)"},{"name":"📡 页面探测","status":"done","message":"通过 curl_cffi (chrome120) 成功绕过, 获取到完整 HTML"},{"name":"🔬 字段分析","status":"running","message":"正在分析产品字段: 标题/价格/属性/店铺..."}]}

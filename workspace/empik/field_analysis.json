@@ -1,0 +1,9 @@
+{
+  "antibot": {
+    "status": "detected",
+    "vendor": "cloudflare",
+    "details": "HTTP 403, Cloudflare challenge (cf-mitigated:challenge), __cf_bm cookie set",
+    "recommendation": "需要 curl_cffi (chrome120指纹) 绕过。GraphQL接口可直接请求。"
+  },
+  "log": "反爬检测完成: Cloudflare detected"
+}
