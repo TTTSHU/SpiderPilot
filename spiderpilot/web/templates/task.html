@@ -120,21 +120,45 @@ pre { background: #1e1e1e; color: #d4d4d4; border-radius: 8px; padding: 16px; ov
             </form>
             <p style="color:#888;font-size:12px;margin-top:8px">自动检测本地安装的 AI 工具</p>
         </div>
-        {% elif state.status in ("waiting_ai", "probing") %}
+        {% elif state.status in ("waiting_ai", "probing", "error") %}
         <div>
             <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
-                <span style="font-size:24px">🧠</span>
-                <strong>AI 思考中...</strong>
+                <span style="font-size:24px">{{ '❌' if state.status == 'error' else '🧠' }}</span>
+                <strong>{{ 'AI 出错' if state.status == 'error' else 'AI 思考中...' }}</strong>
                 <span style="color:#888;font-size:12px" id="think-count"></span>
             </div>
             <div id="think-stream" style="background:#0d1117;color:#c9d1d9;border-radius:8px;padding:16px;font-family:monospace;font-size:12px;line-height:1.8;max-height:400px;overflow-y:auto">
-                <span style="color:#8b949e">⏳ 等待 AI 开始思考...</span>
+                {% if think_lines %}
+                    {% for l in think_lines %}
+                    <div><span style="color:#6e7681">[{{ l.time }}]</span> <span style="color:#{{ '#58a6ff' if '✅' in l.text or '发现' in l.text or '分析' in l.text else '#3fb950' if '✅' in l.text or '完成' in l.text else '#f85149' if '❌' in l.text or '失败' in l.text or '错误' in l.text else '#8b949e' }}">{{ l.text }}</span></div>
+                    {% endfor %}
+                {% else %}
+                    <span style="color:#8b949e">⏳ 等待 AI 开始思考...</span>
+                {% endif %}
             </div>
         </div>
-        {% elif state.status == "probing" %}
-        <span style="font-size:32px">🔍</span> <strong>AI 分析中...</strong>
+        {% elif state.status == "analyzed" and think_lines %}
+        <div>
+            <strong>🧠 AI 思考记录</strong>
+            <div style="background:#0d1117;color:#c9d1d9;border-radius:8px;padding:16px;font-family:monospace;font-size:12px;line-height:1.8;max-height:300px;overflow-y:auto;margin-top:8px">
+                {% for l in think_lines %}
+                <div><span style="color:#6e7681">[{{ l.time }}]</span> {{ l.text }}</div>
+                {% endfor %}
+            </div>
+        </div>
         {% endif %}
     </div>
+
+    {% if think_lines %}
+    <div class="card">
+        <h2>🧠 AI 输出</h2>
+        <div style="background:#0d1117;color:#c9d1d9;border-radius:8px;padding:16px;font-family:monospace;font-size:12px;line-height:1.8;max-height:300px;overflow-y:auto">
+            {% for l in think_lines %}
+            <div><span style="color:#6e7681">[{{ l.time }}]</span> {{ l.text }}</div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
 
     {% if analysis.get("antibot") %}
     <div class="card">

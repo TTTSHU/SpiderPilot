@@ -12,7 +12,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 import jinja2
 
 from spiderpilot.agent_scanner import scan_agents, write_trigger as write_agent_trigger
-from spiderpilot.analyzer import analyze_in_background
+from spiderpilot.engine import run_ai_analysis
 from spiderpilot.store import (
     create_task, get_task, list_tasks, update_status, update_spec,
     save_analysis, save_spider_code, save_raw_html,
@@ -111,8 +111,8 @@ async def api_trigger(task_id: str, agent: str = ""):
     spec["agent"] = agent
     update_spec(task_id, spec)
 
-    # 在后台线程中启动分析
-    analyze_in_background(task_id)
+    # 在后台线程中启动 AI 分析（自动检测 CodeWhale CLI 或使用内置引擎）
+    run_ai_analysis(task_id)
 
     append_log(task_id, f"触发分析: {url}")
     return RedirectResponse(f"/task/{task_id}", status_code=303)
