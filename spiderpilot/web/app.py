@@ -65,8 +65,11 @@ async def task_detail(request: Request, task_id: str):
         "has_spider": bool(task.get("spider_code")),
     }
 
-    spec = task.get("spec", {})
-    analysis = task.get("analysis", {})
+    spec = task.get("spec", {}) or {}
+    spec.setdefault("url", task.get("url", ""))
+    spec.setdefault("platform", task.get("platform", ""))
+    spec.setdefault("created_at", task.get("created_at", ""))
+    analysis = task.get("analysis", {}) or {}
     spider_code = task.get("spider_code", "")
     log_lines = get_log(task_id)
     think_lines = get_think_stream(task_id)
