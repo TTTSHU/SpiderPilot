@@ -1,1 +1,1 @@
-{"task_id": "empik", "url": "https://www.empik.com/philips-depilator-ipl-lumea-bri977-00-rozowy,p1380286231,agd-p", "agent": "codewhale", "action": "analyze"}
+{"task_id": "empik", "url": "", "agent": "codewhale", "action": "analyze"}

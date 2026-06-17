@@ -160,22 +160,35 @@ def update_spec(task_id: str, spec: dict):
 
 def save_analysis(task_id: str, analysis: dict):
     db = _get_db()
+    now = _now()
     db.execute(
         "UPDATE task_data SET analysis = ? WHERE task_id = ?",
         (json.dumps(analysis, ensure_ascii=False), task_id),
     )
-    update_status(task_id, "analyzed")
+    db.execute(
+        "UPDATE tasks SET status = 'analyzed', updated_at = ? WHERE id = ?",
+        (now, task_id),
+    )
     if analysis.get("log"):
-        append_log(task_id, analysis["log"])
+        db.execute(
+            "INSERT INTO operation_log (task_id, time, message) VALUES (?,?,?)",
+            (task_id, now, analysis["log"]),
+        )
+    db.commit()
 
 
 def save_spider_code(task_id: str, code: str, plan: dict | None = None):
     db = _get_db()
+    now = _now()
     db.execute(
         "UPDATE task_data SET spider_code = ?, plan = ? WHERE task_id = ?",
         (code, json.dumps(plan, ensure_ascii=False) if plan else "{}", task_id),
     )
-    update_status(task_id, "generated")
+    db.execute(
+        "UPDATE tasks SET status = 'generated', updated_at = ? WHERE id = ?",
+        (now, task_id),
+    )
+    db.commit()
 
 
 def save_raw_html(task_id: str, html: str):
