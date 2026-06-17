@@ -94,11 +94,11 @@ async def api_agents():
 
 
 @app.post("/create", response_class=RedirectResponse)
-async def api_create(name: str = Form(...), url: str = Form(...),
-                     platform: str = Form(""), agent: str = Form("")):
+async def api_create(name: str = Form(...), target_url: str = Form(..., alias="url"),
+                     platform: str = Form(""), agent: str = Form(..., alias="agent")):
     task_id = name.replace(" ", "_").lower()
-    create_task(task_id, name, url.strip(), platform, agent)
-    append_log(task_id, f"任务创建: {url}")
+    create_task(task_id, name, target_url.strip(), platform, agent)
+    append_log(task_id, f"任务创建: {target_url}")
     return RedirectResponse(f"/task/{task_id}", status_code=303)
 
 
