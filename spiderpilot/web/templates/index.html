@@ -1,139 +1,103 @@
 <!DOCTYPE html>
 <html lang="zh">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>SpiderPilot</title>
 <style>
-*{margin:0;padding:0;box-sizing:border-box}
-body{font-family:"SF Pro Display","Segoe UI",system-ui,-apple-system,sans-serif;background:#0d1117;color:#c9d1d9;min-height:100vh}
-.header{background:#161b22;border-bottom:1px solid #30363d;padding:16px 24px;display:flex;align-items:center;gap:12px}
-.header h1{font-size:20px;color:#58a6ff;font-weight:600}
-.header span{color:#8b949e;font-size:13px}
-.container{max-width:960px;margin:0 auto;padding:24px}
-.card{background:#161b22;border:1px solid #30363d;border-radius:8px;padding:20px;margin-bottom:16px}
-.card h2{font-size:16px;color:#e6edf3;margin-bottom:12px}
-.form-group{margin-bottom:12px}
-.form-group label{display:block;font-size:13px;color:#8b949e;margin-bottom:4px;font-weight:500}
-input,textarea,select{width:100%;background:#0d1117;border:1px solid #30363d;border-radius:6px;padding:10px 12px;color:#c9d1d9;font-size:14px;font-family:inherit}
-input:focus,textarea:focus,select:focus{outline:none;border-color:#58a6ff;box-shadow:0 0 0 2px rgba(88,166,255,.15)}
-textarea{resize:vertical;min-height:100px;line-height:1.5;font-family:"SF Mono","Fira Code","Consolas",monospace;font-size:13px}
-.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:6px;font-size:13px;font-weight:500;cursor:pointer;border:1px solid #30363d;transition:all .15s}
-.btn-primary{background:#238636;border-color:#238636;color:#fff}
-.btn-primary:hover{background:#2ea043}
-.btn-secondary{background:#21262d;color:#c9d1d9}
-.btn-secondary:hover{background:#30363d}
-.btn-sm{padding:4px 10px;font-size:12px}
-.btn-danger{background:#da3633;border-color:#da3633;color:#fff}
-.btn-danger:hover{background:#f85149}
-.task-list{display:flex;flex-direction:column;gap:8px}
-.task-item{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:#0d1117;border:1px solid #30363d;border-radius:6px;cursor:pointer;transition:all .12s;text-decoration:none;color:inherit}
-.task-item:hover{background:#161b22;border-color:#58a6ff}
-.task-item .name{font-weight:600;color:#58a6ff;font-size:14px}
-.task-item .meta{color:#8b949e;font-size:12px;display:flex;gap:12px}
-.badge{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:500}
-.badge-ok{background:#23863622;color:#3fb950;border:1px solid #23863644}
-.badge-fail{background:#da363322;color:#f85149;border:1px solid #da363344}
-.field-row{display:flex;gap:8px;align-items:center;margin-bottom:6px}
-.field-row input{flex:1}
-.field-row select{width:120px}
-.field-row .btn{flex-shrink:0}
-.hint{font-size:12px;color:#8b949e;margin-top:4px;line-height:1.5}
-.empty{text-align:center;color:#8b949e;padding:32px;font-size:14px}
-.row{display:flex;gap:12px}
-.col{flex:1}
-pre{background:#0d1117;border:1px solid #30363d;border-radius:6px;padding:12px;overflow:auto;font-size:12px;line-height:1.5;max-height:300px}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f5f5f5; color: #333; }
+.container { max-width: 900px; margin: 0 auto; padding: 24px; }
+h1 { font-size: 24px; margin-bottom: 8px; }
+.subtitle { color: #666; margin-bottom: 32px; }
+
+.card { background: #fff; border-radius: 12px; padding: 24px; margin-bottom: 24px; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+.card h2 { font-size: 18px; margin-bottom: 16px; }
+
+form { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; }
+.form-group { display: flex; flex-direction: column; gap: 4px; }
+.form-group label { font-size: 13px; color: #666; }
+input { padding: 10px 14px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; width: 200px; }
+input:focus { outline: none; border-color: #4f46e5; }
+
+.btn { padding: 10px 20px; border: none; border-radius: 8px; font-size: 14px; cursor: pointer; font-weight: 500; }
+.btn-primary { background: #4f46e5; color: #fff; }
+.btn-primary:hover { background: #4338ca; }
+
+table { width: 100%; border-collapse: collapse; }
+th, td { text-align: left; padding: 12px 16px; border-bottom: 1px solid #eee; font-size: 14px; }
+th { color: #666; font-weight: 500; }
+tr:hover { background: #fafafa; }
+a { color: #4f46e5; text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+.status { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 12px; }
+.status-created { background: #e5e7eb; color: #6b7280; }
+.status-probing { background: #fef3c7; color: #92400e; }
+.status-analyzed { background: #dbeafe; color: #1e40af; }
+.status-generated { background: #d1fae5; color: #065f46; }
+.status-complete { background: #d1fae5; color: #065f46; }
+
+.empty { text-align: center; padding: 40px; color: #999; }
+.empty p { margin: 8px 0; }
 </style>
 </head>
 <body>
-<div class="header"><a href="/settings" style="color:#8b949e;text-decoration:none;font-size:13px;margin-right:12px">Settings</a>
-  <h1>SpiderPilot</h1>
-  <span>AI 自动逆向爬虫框架</span>
-</div>
 <div class="container">
-  <div class="card">
-    <h2>新建任务</h2>
-    <form method="post" action="/create" id="create-form">
-      <div class="row">
-        <div class="col">
-          <div class="form-group">
-            <label>任务名称</label>
-            <input name="name" placeholder="my_product_detail" required>
-          </div>
-        </div>
-        <div class="col">
-          <div class="form-group">
-            <label>行业模板</label>
-            <select name="template">
-              <option value="generic">通用</option>
-              <option value="ecommerce">电商</option>
-              <option value="news">新闻</option>
-              <option value="jobs">招聘</option>
-              <option value="real_estate">房产</option>
-              <option value="social_media">社媒</option>
-            </select>
-          </div>
-        </div>
-      </div>
-      <div class="form-group">
-        <label>样例 URL</label>
-        <textarea name="urls" placeholder="https://example.com/product/1001|title=Apple iPhone 15|price=3999&#10;https://example.com/product/1002|title=Samsung S24|price=4599&#10;https://example.com/product/1003|title=Xiaomi 14|price=5299" required></textarea>
-        <div class="hint">每行一个 URL + 期望字段：<code>URL|字段名=期望值|字段名=期望值</code></div>
-      </div>
-      <div class="form-group">
-        <label>字段定义</label>
-        <div id="fields-container">
-          <div class="field-row">
-            <input placeholder="字段名" class="field-name" value="title">
-            <select class="field-type"><option>string</option><option>decimal</option><option>int</option><option>list[string]</option><option>html</option><option>datetime</option></select>
-            <select class="field-req"><option value="1">必填</option><option value="0">可选</option></select>
-          </div>
-          <div class="field-row">
-            <input placeholder="字段名" class="field-name" value="price">
-            <select class="field-type"><option>string</option><option selected>decimal</option><option>int</option></select>
-            <select class="field-req"><option value="1">必填</option></select>
-          </div>
-        </div>
-        <button type="button" class="btn btn-secondary btn-sm" onclick="addField()" style="margin-top:6px">+ 添加字段</button>
-      </div>
-      <input type="hidden" name="fields_data" id="fields-json">
-      <button type="submit" class="btn btn-primary" onclick="prepareFields()">创建任务</button>
-    </form>
-  </div>
+    <h1>🕷️ SpiderPilot</h1>
+    <p class="subtitle">输入 URL，AI 自动分析并生成爬虫代码</p>
 
-  <div class="card">
-    <h2>已有任务</h2>
-    {% if tasks %}
-    <div class="task-list">
-    {% for t in tasks %}
-      <a href="/task/{{ t.task_id }}" class="task-item">
-        <span class="name">{{ t.task_id }}</span>
-        <span class="meta">{{ t.samples }} 个样本 · {{ t.fields|length }} 个字段</span>
-      </a>
-    {% endfor %}
+    <div class="card">
+        <h2>➕ 新建任务</h2>
+        <form action="/create" method="post">
+            <div class="form-group">
+                <label>任务名称</label>
+                <input name="name" placeholder="如: empik" required>
+            </div>
+            <div class="form-group">
+                <label>平台域名（可选）</label>
+                <input name="platform" placeholder="如: empik.com">
+            </div>
+            <div class="form-group">
+                <label>目标 URL</label>
+                <input name="url" placeholder="https://..." required style="width:400px">
+            </div>
+            <button class="btn btn-primary" type="submit">创建</button>
+        </form>
     </div>
-    {% else %}
-    <div class="empty">还没有任务，在上面新建一个</div>
-    {% endif %}
-  </div>
+
+    <div class="card">
+        <h2>📋 任务列表</h2>
+        {% if projects %}
+        <table>
+            <thead>
+                <tr>
+                    <th>任务</th>
+                    <th>URL</th>
+                    <th>状态</th>
+                    <th>字段</th>
+                    <th>更新时间</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for p in projects %}
+                <tr>
+                    <td><a href="/task/{{ p.name }}">{{ p.name }}</a></td>
+                    <td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ p.url }}</td>
+                    <td><span class="status status-{{ p.status }}">{{ p.status }}</span></td>
+                    <td>{{ p.fields_count }}</td>
+                    <td>{{ p.updated }}</td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="empty">
+            <p>暂无任务</p>
+            <p>👆 上方创建一个</p>
+        </div>
+        {% endif %}
+    </div>
 </div>
-<script>
-function addField(){
-  var d=document.createElement("div");
-  d.className="field-row";
-  d.innerHTML='<input placeholder="字段名" class="field-name"><select class="field-type"><option>string</option><option>decimal</option><option>int</option><option>list[string]</option><option>html</option><option>datetime</option></select><select class="field-req"><option value="1">必填</option><option value="0">可选</option></select><button type="button" class="btn btn-sm" style="color:#f85149;border:none;background:none" onclick="this.parentElement.remove()">×</button>';
-  document.getElementById("fields-container").appendChild(d)
-}
-function prepareFields(){
-  var rows=document.querySelectorAll(".field-row");
-  var fields=[];
-  rows.forEach(function(r){
-    var name=r.querySelector(".field-name").value.trim();
-    if(!name) return;
-    fields.push({name:name,type:r.querySelector(".field-type").value,required:r.querySelector(".field-req").value==="1"})
-  });
-  document.getElementById("fields-json").value=JSON.stringify(fields)
-}
-</script>
 </body>
 </html>
