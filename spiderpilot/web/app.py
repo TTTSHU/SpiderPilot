@@ -94,11 +94,19 @@ async def api_agents():
 
 
 @app.post("/create", response_class=RedirectResponse)
-async def api_create(name: str = Form(...), target_url: str = Form(..., alias="url"),
-                     platform: str = Form(""), agent: str = Form(..., alias="agent")):
+async def api_create(request: Request):
+    """从原始表单创建任务，避免 FastAPI Form 参数冲突。"""
+    form = await request.form()
+    name = form.get("name", "").strip()
+    url = form.get("url", "").strip()
+    platform = form.get("platform", "").strip()
+    agent = form.get("agent", "").strip()
+    if not name or not url:
+        return RedirectResponse("/", status_code=303)
+
     task_id = name.replace(" ", "_").lower()
-    create_task(task_id, name, target_url.strip(), platform, agent)
-    append_log(task_id, f"任务创建: {target_url}")
+    create_task(task_id, name, url, platform, agent)
+    append_log(task_id, f"任务创建: {url}")
     return RedirectResponse(f"/task/{task_id}", status_code=303)
 
 
